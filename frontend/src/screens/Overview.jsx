@@ -1,39 +1,50 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, ShieldCheck, UserRound, Timer, ArrowUpRight, TrendingUp, Cog, Droplets, Weight, Gauge } from 'lucide-react';
+import { Activity, ShieldCheck, UserRound, Timer, ArrowUpRight, TrendingUp, TrendingDown, Cog, Droplets, Weight, Gauge } from 'lucide-react';
 import { Panel, PanelHeader, StatusPill, ArcGauge, AnimatedNumber, cx } from '../components/ui/index.jsx';
 import MachinePlan from '../components/MachinePlan.jsx';
 import { useI18n } from '../lib/i18n.jsx';
 import { useClock } from '../hooks/useTelemetry.js';
-import { twin, tasks } from '../data/mock.js';
+import { api } from '../api/client.js';
+import { useApi } from '../hooks/useApi.js';
+import { ApiState } from '../components/ApiState.jsx';
 
-export default function Overview({ live, telemetry, nav }) {
+export default function Overview({ live, telemetry, nav, operatorId, machineId, session, dataVersion, refresh }) {
   const { t } = useI18n();
   const now = useClock();
+  const dash = useApi(() => api.dashboard(operatorId), [operatorId, dataVersion], { interval: 15000 });
+  const [starting, setStarting] = useState(false);
   const h = now.getHours();
   const greet = h < 12 ? 'greet.morning' : h < 17 ? 'greet.afternoon' : 'greet.evening';
-  const safety = 100 - live.risk.score;
+  if (!live.ready || !dash.data) return <ApiState loading={dash.loading || !live.ready} error={dash.error} data={dash.data} onRetry={dash.reload} rows={4} label="Loading dashboard" />;
+
+  const d = dash.data;
+  const safety = Math.round(100 - live.risk.score);
   const lvl = live.risk.level;
   const s = live.state;
-  const task = tasks.find((x) => x.status === 'in_progress');
+  const task = d.current_task;
+  const tw = d.twin;
+  const byKey = Object.fromEntries(live.risk.contributions.map((c) => [c.key, c]));
+  const factorLevel = (k) => (byKey[k]?.points > 8 ? 'high' : byKey[k]?.points > 3 ? 'medium' : 'safe');
+  const startTask = async () => { setStarting(true); try { await api.startTask(task.id); await dash.reload(true); refresh?.(); } finally { setStarting(false); } };
 
   return (
     <div className="space-y-4">
       {/* Greeting strip */}
       <div className="flex flex-wrap items-end justify-between gap-4 pb-2">
         <div>
-          <div className="label text-assist">{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} · 06:00 – 14:00</div>
+          <div className="label text-assist">{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} · {d.operator.shift_window}</div>
           <h1 className="font-display text-[32px] sm:text-[40px] leading-none font-semibold tracking-[0.03em] uppercase mt-2">{t(greet)}</h1>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="num text-2xl">EXC-204</div>
-            <div className="label">Excavator</div>
+            <div className="num text-2xl">{machineId}</div>
+            <div className="label">{d.machine.machine_type}</div>
           </div>
           <div className="h-12 w-px bg-line" />
           <div>
             <StatusPill level="safe">{t('hdr.online')}</StatusPill>
-            <div className="num text-ink2 text-sm mt-1.5">{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {t('hdr.shift')}</div>
+            <div className="num text-ink2 text-sm mt-1.5">{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} · {d.operator.operating_shift}</div>
           </div>
         </div>
       </div>
@@ -42,23 +53,28 @@ export default function Overview({ live, telemetry, nav }) {
         {/* Today's operation */}
         <Panel className="md:col-span-3 xl:col-span-4 flex flex-col">
           <PanelHeader title={t('ov.today')} icon={Activity} right={<button onClick={() => nav('tasks')} className="text-ink3 hover:text-ink" aria-label="Open tasks"><ArrowUpRight size={18} /></button>} />
-          <div className="label">{t('ov.current')}</div>
-          <div className="font-display text-2xl font-semibold uppercase tracking-wide mt-1">{task.name} — {task.zone}</div>
-          <div className="flex items-center gap-5 mt-5">
-            <ProgressRing value={task.progress} />
-            <div className="min-w-0 flex-1">
-              <div className="label">{t('ov.eta')}</div>
-              <div className="font-display text-[44px] leading-none font-semibold mt-1">2h <span className="text-ink2">18m</span></div>
-              <div className="label mt-3">{t('ov.range')}</div>
-              <div className="num text-sm text-ink2 mt-1">2h 05m – 2h 35m</div>
-            </div>
-          </div>
-          <EtaRange low={125} point={138} high={155} className="mt-6" />
-          <div className="mt-auto pt-5 grid grid-cols-3 gap-2 text-center">
-            {tasks.map((x, i) => i < 3 && (
+          {task ? (
+            <>
+              <div className="label">{task.status === 'in_progress' ? t('ov.current') : 'Next task'}</div>
+              <div className="font-display text-2xl font-semibold uppercase tracking-wide mt-1">{task.name} — {task.zone}</div>
+              <div className="flex items-center gap-5 mt-5">
+                <ProgressRing value={task.progress} />
+                <div className="min-w-0 flex-1">
+                  <div className="label">{task.status === 'in_progress' ? t('ov.eta') : 'Predicted duration'}</div>
+                  <div className="font-display text-[44px] leading-none font-semibold mt-1">{hm(task.eta.pointMin)}</div>
+                  <div className="label mt-3">{t('ov.range')}</div>
+                  <div className="num text-sm text-ink2 mt-1">{task.eta.range_display}</div>
+                </div>
+              </div>
+              <EtaRange low={task.eta.lowMin} point={task.eta.pointMin} high={task.eta.highMin} className="mt-6" />
+              {task.status === 'pending' && <button className="btn btn-primary w-full mt-4" onClick={startTask} disabled={starting}>Start task</button>}
+            </>
+          ) : <p className="text-ink2">All tasks for today are complete.</p>}
+          <div className="mt-auto pt-5 grid grid-cols-4 gap-2 text-center">
+            {d.tasks.map((x) => (
               <div key={x.id} className="rounded-md bg-bg3/60 border border-line py-2">
                 <div className="label">{x.zone}</div>
-                <div className={cx('text-xs font-semibold mt-1', x.status === 'completed' ? 'text-safe' : 'text-assist')}>{x.status === 'completed' ? 'DONE ✓' : `${x.progress}%`}</div>
+                <div className={cx('text-xs font-semibold mt-1', x.status === 'completed' ? 'text-safe' : x.status === 'in_progress' ? 'text-assist' : 'text-ink3')}>{x.status === 'completed' ? 'DONE ✓' : x.status === 'in_progress' ? `${x.progress}%` : 'NEXT'}</div>
               </div>
             ))}
           </div>
@@ -68,13 +84,13 @@ export default function Overview({ live, telemetry, nav }) {
         <Panel className="md:col-span-3 xl:col-span-5 !p-0 overflow-hidden flex flex-col">
           <div className="p-5 pb-0"><PanelHeader title={t('ov.machine')} icon={Gauge} right={<StatusPill level={lvl} pulse={lvl !== 'low'}>{t('lvl.short.' + lvl)}</StatusPill>} /></div>
           <div className="relative flex-1 min-h-[300px] tech-grid">
-            <MachinePlan worker={s.worker} distance={s.distance} level={lvl} speed={s.speed} load={s.load} className="absolute inset-0 h-full" />
+            <MachinePlan worker={s.worker} distance={s.distance} level={lvl} speed={s.speed} load={s.load} label={machineId} className="absolute inset-0 h-full" />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-2 xl:grid-cols-4 border-t border-line [&>*]:border-line [&>*:not(:last-child)]:border-r">
             <Mini icon={Gauge} k={t('f.speed')} v={<><AnimatedNumber value={s.speed} decimals={1} /> <small className="text-ink3">km/h</small></>} />
             <Mini icon={Weight} k={t('f.load')} v={<><AnimatedNumber value={s.load} />%</>} />
-            <Mini icon={Cog} k="Engine" v={<span className="text-safe">{t('s.normal')}</span>} />
-            <Mini icon={Droplets} k="Hydraulic" v={<span className="text-safe">{t('s.normal')}</span>} />
+            <Mini icon={Cog} k="Engine" v={<span className={telemetry.engineTemp > 100 ? 'text-caution' : 'text-safe'}>{telemetry.engineTemp > 100 ? 'HOT' : t('s.normal')}</span>} />
+            <Mini icon={Droplets} k="Hydraulic" v={<span className={telemetry.hydraulicTemp > 90 ? 'text-caution' : 'text-safe'}>{telemetry.hydraulicTemp > 90 ? 'HOT' : t('s.normal')}</span>} />
           </div>
         </Panel>
 
@@ -82,37 +98,41 @@ export default function Overview({ live, telemetry, nav }) {
         <Panel className="md:col-span-6 xl:col-span-3 flex flex-col">
           <PanelHeader title={t('ov.safety')} icon={ShieldCheck} right={<button onClick={() => nav('safety')} className="text-ink3 hover:text-ink" aria-label="Open safety center"><ArrowUpRight size={18} /></button>} />
           <div className="flex justify-center -mt-2"><ArcGauge value={safety} level={lvl} size={210} sub="/100" label={t('lvl.' + lvl)} /></div>
+          <div className="text-center text-[11px] text-ink3 -mt-1 mb-1">safety = 100 − predicted risk</div>
           <div className="mt-1 space-y-0">
-            <Row k={t('f.proximity')} v={s.distance < 3 ? `${s.distance} m` : t('s.safe')} level={s.distance < 3 ? 'high' : s.distance < 4 ? 'medium' : 'safe'} />
-            <Row k={t('f.seatbelt')} v={t('s.fastened')} level="safe" />
-            <Row k={t('f.terrain')} v={s.slope > 9 ? `${s.slope}°` : t('s.moderate')} level={s.slope > 9 ? 'medium' : 'assist'} />
-            <Row k={t('f.control')} v={t('s.stable')} level="safe" />
-            <Row k={t('f.load')} v={s.load > 80 ? 'HIGH' : t('s.normal')} level={s.load > 80 ? 'medium' : 'safe'} />
+            <Row k={t('f.proximity')} v={s.distance < 6 ? `${s.distance.toFixed(1)} m` : t('s.safe')} level={factorLevel('proximity')} />
+            <Row k={t('f.seatbelt')} v={s.seatbelt === 'Fastened' ? t('s.fastened') : 'UNFASTENED'} level={s.seatbelt === 'Fastened' ? 'safe' : 'critical'} />
+            <Row k={t('f.terrain')} v={`${s.slope}°`} level={factorLevel('terrain')} />
+            <Row k={t('f.control')} v={factorLevel('control') === 'safe' ? t('s.stable') : 'CHECK'} level={factorLevel('control')} />
+            <Row k={t('f.load')} v={s.load > 80 ? 'HIGH' : t('s.normal')} level={factorLevel('load')} />
           </div>
         </Panel>
 
         {/* Operator digital twin */}
         <Panel className="md:col-span-6 xl:col-span-7">
-          <PanelHeader title={t('ov.twin')} icon={UserRound} sub="Compared with OP1007's own last 30 shifts — not a fleet average."
+          <PanelHeader title={t('ov.twin')} icon={UserRound} sub={`Scores for the last ${tw.period_days} recorded days · marker = previous ${tw.period_days} days.`}
             right={<button onClick={() => nav('twin')} className="text-ink3 hover:text-ink" aria-label="Open operator twin"><ArrowUpRight size={18} /></button>} />
           <div className="grid sm:grid-cols-[1fr_220px] gap-6">
             <ul className="space-y-3">
-              {[['Safety', twin.scores.safety, twin.lastWeek.safety], ['Efficiency', twin.scores.efficiency, twin.lastWeek.efficiency], ['Control', twin.scores.control, twin.lastWeek.control], ['Awareness', twin.scores.awareness, twin.lastWeek.awareness], ['Fuel usage', twin.scores.fuel, twin.lastWeek.fuel]].map(([k, v, prev], i) => (
-                <li key={k} className="grid grid-cols-[92px_1fr_64px] items-center gap-3">
-                  <span className="text-sm text-ink2">{k}</span>
-                  <div className="relative h-2.5 rounded-sm bg-bg3">
-                    <motion.div className="absolute inset-y-0 left-0 rounded-sm bg-ink" initial={{ width: 0 }} animate={{ width: `${v}%` }} transition={{ duration: 0.8, delay: i * 0.06 }} />
-                    <div className="absolute -inset-y-1 w-0.5 bg-assist" style={{ left: `${prev}%` }} title={`Last week ${prev}`} />
-                  </div>
-                  <span className="num text-right text-lg">{v}<small className={cx('text-xs ml-1', v >= prev ? 'text-safe' : 'text-elevated')}>{v >= prev ? '▲' : '▼'}</small></span>
-                </li>
-              ))}
-              <li className="flex items-center gap-2 text-xs text-ink3 pt-1"><span className="w-3 h-0.5 bg-assist inline-block" /> last week</li>
+              {[['Safety', 'safety'], ['Efficiency', 'efficiency'], ['Control', 'control'], ['Awareness', 'awareness'], ['Fuel usage', 'fuel']].map(([k, key], i) => {
+                const v = tw.scores[key], prev = tw.lastPeriod[key];
+                return (
+                  <li key={k} className="grid grid-cols-[92px_1fr_64px] items-center gap-3">
+                    <span className="text-sm text-ink2">{k}</span>
+                    <div className="relative h-2.5 rounded-sm bg-bg3">
+                      <motion.div className="absolute inset-y-0 left-0 rounded-sm bg-ink" initial={{ width: 0 }} animate={{ width: `${v}%` }} transition={{ duration: 0.8, delay: i * 0.06 }} />
+                      <div className="absolute -inset-y-1 w-0.5 bg-assist" style={{ left: `${prev}%` }} title={`Previous period ${prev}`} />
+                    </div>
+                    <span className="num text-right text-lg">{v}<small className={cx('text-xs ml-1', v >= prev ? 'text-safe' : 'text-elevated')}>{v >= prev ? '▲' : '▼'}</small></span>
+                  </li>
+                );
+              })}
+              <li className="flex items-center gap-2 text-xs text-ink3 pt-1"><span className="w-3 h-0.5 bg-assist inline-block" /> previous period</li>
             </ul>
             <div className="grid grid-cols-3 sm:grid-cols-1 gap-2">
-              <TwinFact k="Current behavior" v="NORMAL" level="safe" />
-              <TwinFact k="Personal baseline" v="STABLE" level="assist" />
-              <TwinFact k="Behavior trend" v={<span className="inline-flex items-center gap-1"><TrendingUp size={16} />IMPROVING</span>} level="safe" />
+              <TwinFact k="Current behavior" v={tw.current_status} level={tw.current_status === 'UNUSUAL' ? 'elevated' : 'safe'} />
+              <TwinFact k="Personal baseline" v={tw.baseline.toUpperCase()} level={tw.baseline === 'stable' ? 'assist' : 'elevated'} />
+              <TwinFact k="Behavior trend" v={<span className="inline-flex items-center gap-1">{tw.trend === 'declining' ? <TrendingDown size={16} /> : <TrendingUp size={16} />}{tw.trend.toUpperCase()}</span>} level={tw.trend === 'declining' ? 'elevated' : 'safe'} />
             </div>
           </div>
         </Panel>
@@ -127,14 +147,16 @@ export default function Overview({ live, telemetry, nav }) {
             <Stat k="Engine hours" v={telemetry.engineHours} u="h" d={1} />
           </div>
           <div className="mt-4 rounded-md border border-assist/40 bg-assist/10 p-3 text-sm flex gap-3">
-            <span className="label text-assist shrink-0 pt-0.5">Predict</span>
-            <span className="text-ink">Fuel reaches 20% around <span className="num">13:05</span> — before Material Transfer (Zone D) ends. Refuel during the 12:30 break.</span>
+            <span className="label text-assist shrink-0 pt-0.5">Project</span>
+            <span className="text-ink">At the current burn of <span className="num">{telemetry.fuelRate} L/h</span>, fuel reaches 20% around <span className="num">{telemetry.fuelProjection.at}</span> ({telemetry.fuelProjection.method}).</span>
           </div>
         </Panel>
       </div>
     </div>
   );
 }
+
+const hm = (m) => (m >= 60 ? <>{Math.floor(m / 60)}h <span className="text-ink2">{String(Math.round(m % 60)).padStart(2, '0')}m</span></> : <>{Math.round(m)}<span className="text-ink2">m</span></>);
 
 function ProgressRing({ value }) {
   const r = 52, c = 2 * Math.PI * r;
@@ -156,21 +178,24 @@ function ProgressRing({ value }) {
   );
 }
 
-export function EtaRange({ low, point, high, className, min = 100, max = 180 }) {
+export function EtaRange({ low, point, high, className }) {
+  const span = Math.max(20, high - low);
+  const min = Math.max(0, Math.floor((low - span * 0.35) / 10) * 10), max = Math.ceil((high + span * 0.35) / 10) * 10;
   const p = (v) => `${((v - min) / (max - min)) * 100}%`;
-  const fmt = (m) => `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`;
+  const fmt = (m) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(Math.round(m % 60)).padStart(2, '0')}m` : `${Math.round(m)}m`);
+  const ticks = Array.from({ length: 5 }, (_, i) => min + ((max - min) * i) / 4);
   return (
     <div className={className}>
-      <div className="flex justify-between label"><span>Prediction range</span><span className="text-assist">80% confidence</span></div>
+      <div className="flex justify-between label"><span>Prediction range</span><span className="text-assist">80% range · coverage checked on test data</span></div>
       <div className="relative h-9 mt-2">
         <div className="absolute inset-x-0 top-1/2 h-px bg-line" />
-        {[100, 120, 140, 160, 180].map((m) => <div key={m} className="absolute top-1/2 h-2 w-px bg-ctl -translate-y-1/2" style={{ left: p(m) }} />)}
+        {ticks.map((m) => <div key={m} className="absolute top-1/2 h-2 w-px bg-ctl -translate-y-1/2" style={{ left: p(m) }} />)}
         <motion.div className="absolute top-1/2 -translate-y-1/2 h-4 rounded-sm bg-assist/25 border border-assist/70"
-          initial={{ left: p(point), width: 0 }} animate={{ left: p(low), width: `calc(${p(high)} - ${p(low)})` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
-        <div className="absolute top-1/2 -translate-y-1/2 w-1 h-7 rounded-full bg-assist" style={{ left: `calc(${p(point)} - 2px)` }} />
+          initial={false} animate={{ left: p(low), width: `calc(${p(high)} - ${p(low)})` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
+        <motion.div className="absolute top-1/2 -translate-y-1/2 w-1 h-7 rounded-full bg-assist" initial={false} animate={{ left: `calc(${p(point)} - 2px)` }} transition={{ duration: 0.8 }} />
       </div>
       <div className="relative h-4 num text-[11px] text-ink3">
-        {[100, 140, 180].map((m, i) => <span key={m} className={cx('absolute whitespace-nowrap', i === 0 ? '' : i === 2 ? '-translate-x-full' : '-translate-x-1/2')} style={{ left: p(m) }}>{fmt(m)}</span>)}
+        {[ticks[0], ticks[2], ticks[4]].map((m, i) => <span key={i} className={cx('absolute whitespace-nowrap', i === 0 ? '' : i === 2 ? '-translate-x-full' : '-translate-x-1/2')} style={{ left: p(m) }}>{fmt(m)}</span>)}
       </div>
     </div>
   );
@@ -193,7 +218,7 @@ function Row({ k, v, level }) {
   );
 }
 function TwinFact({ k, v, level }) {
-  const col = { safe: 'text-safe', assist: 'text-assist', elevated: 'text-elevated' }[level];
+  const col = { safe: 'text-safe', assist: 'text-assist', elevated: 'text-elevated', critical: 'text-critical' }[level];
   return (
     <div className="rounded-md bg-bg3/60 border border-line p-3">
       <div className="label">{k}</div>

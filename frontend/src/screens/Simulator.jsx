@@ -5,7 +5,9 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, RotateCcw, Eye, Video, GraduationCap, CheckCircle2, XCircle, MinusCircle, TriangleAlert } from 'lucide-react';
 import { ScenarioSlider, ArcGauge, Disclaimer, StatusPill, cx } from '../components/ui/index.jsx';
-import { computeRisk, LEVEL_COLOR } from '../lib/risk.js';
+import { LEVEL_COLOR, ui } from '../lib/risk.js';
+import { api } from '../api/client.js';
+import { useThrottledModel } from '../hooks/useApi.js';
 import { useI18n } from '../lib/i18n.jsx';
 
 /* ───────────── Scenario model ─────────────
@@ -15,16 +17,18 @@ const WORKER_START = new THREE.Vector3(-6, 0, 7.5);
 const WORKER_TARGET = new THREE.Vector3(-1.3, 0, 3.6);
 const HULL = 2.0; // distance from machine centre to hull edge (approx)
 
+// Educational explanation per choice. The IMPACT rating is not stored here: it comes from the safety model
+// via POST /api/simulation/decision, which scores the resulting state of every option.
 const OPTIONS = [
-  { id: 'A', key: 'sim.a', impact: 'negative', why: 'Continuing at the same speed keeps the machine closing on a worker it cannot see. Simulated clearance falls below 1 m.' },
-  { id: 'B', key: 'sim.b', impact: 'positive', why: 'Reducing speed decreases the simulated risk under the current scenario — more time for the worker and for you to react — but the machine is still moving toward an unverified zone.' },
-  { id: 'C', key: 'sim.c', impact: 'best', why: 'Stopping removes machine motion entirely. The worker clears the zone and you resume only after verifying the surroundings.' },
-  { id: 'D', key: 'sim.d', impact: 'critical', why: 'Reversing moves the machine toward the rear-left blind zone — exactly where the worker is. This is the highest-risk choice in this scenario.' },
+  { id: 'A', key: 'sim.a', why: 'Continuing at the same speed keeps the machine closing on a worker it cannot see.' },
+  { id: 'B', key: 'sim.b', why: 'Reducing speed gives the worker and you more time to react — but the machine is still moving toward an unverified zone.' },
+  { id: 'C', key: 'sim.c', why: 'Stopping removes machine motion entirely. The worker clears the zone and you resume only after verifying the surroundings.' },
+  { id: 'D', key: 'sim.d', why: 'Reversing moves the machine toward the rear-left blind zone — exactly where the worker is.' },
 ];
 
-export default function Simulator({ nav }) {
+export default function Simulator({ nav, operatorId }) {
   const { t } = useI18n();
-  const [ctl, setCtl] = useState({ speed: 5.5, load: 60, slope: 8, visibility: 70 });
+  const [ctl, setCtl] = useState({ speed: 3.5, load: 60, slope: 8, visibility: 70 });
   const [phase, setPhase] = useState('ready'); // ready | running | decide | outcome | analysis
   const [choice, setChoice] = useState(null);
   const [dist, setDist] = useState(WORKER_START.distanceTo(new THREE.Vector3()) - HULL);
@@ -32,8 +36,17 @@ export default function Simulator({ nav }) {
   const [before, setBefore] = useState(null);
   const sim = useRef({ machineZ: 0, worker: WORKER_START.clone(), effSpeed: 0, t: 0 });
 
+  const [decision, setDecision] = useState(null);
   const effSpeed = phase === 'outcome' || phase === 'analysis' ? outcomeSpeed(choice, ctl.speed) : phase === 'running' ? ctl.speed : phase === 'decide' ? ctl.speed : 0;
-  const risk = computeRisk({ speed: effSpeed || (phase === 'ready' ? ctl.speed : 0), distance: phase === 'ready' ? 4 : Math.max(0.3, dist), load: ctl.load, slope: ctl.slope, visibility: ctl.visibility });
+  // Scene → safety-model inputs. The worker approaches the rear-left (blind side) while the machine reverses.
+  const modelState = {
+    speed: +(effSpeed || (phase === 'ready' ? ctl.speed : 0)).toFixed(1), distance: +(phase === 'ready' ? 4 : Math.max(0.5, dist)).toFixed(1),
+    load: ctl.load, slope: ctl.slope, visibility: ctl.visibility, Obstacle_Type: 'Worker',
+    Travel_Direction: effSpeed > 0.05 || phase === 'ready' ? 'Reverse' : 'Stationary',
+    Blind_Zone_Entry: phase !== 'ready' && dist < 6 ? 1 : 0,
+  };
+  const riskQ = useThrottledModel(() => api.simulateRisk(modelState, operatorId, true), JSON.stringify(modelState), 250);
+  const risk = riskQ.data ? { ...riskQ.data, level: ui(riskQ.data.level) } : { score: 0, level: 'low', pending: true };
   // Zone radius grows with speed, load, slope and poor visibility (stopping distance + swing envelope)
   const zoneR = 3 + ctl.speed * 0.22 + ctl.load * 0.012 + ctl.slope * 0.05 + (100 - ctl.visibility) * 0.012;
 
@@ -42,7 +55,11 @@ export default function Simulator({ nav }) {
     setChoice(null); setBefore(null); setPhase('running');
   };
   const reset = () => { sim.current = { machineZ: 0, worker: WORKER_START.clone(), effSpeed: 0, t: 0 }; setDist(WORKER_START.length() - HULL); setChoice(null); setPhase('ready'); };
-  const decide = (id) => { setBefore(risk); setChoice(id); setPhase('outcome'); setTimeout(() => setPhase('analysis'), 3200); };
+  const decide = (id) => {
+    setBefore(risk); setChoice(id); setPhase('outcome'); setDecision(null);
+    api.decision(modelState, id, operatorId).then(setDecision).catch((e) => setDecision({ error: e }));
+    setTimeout(() => setPhase('analysis'), 3200);
+  };
 
   const onTick = useCallback((d) => setDist(d), []);
   const onReachZone = useCallback(() => setPhase((p) => (p === 'running' ? 'decide' : p)), []);
@@ -82,11 +99,13 @@ export default function Simulator({ nav }) {
         {/* HUD: risk */}
         <div className="absolute z-10 top-4 right-4 hidden sm:block panel p-4 bg-bg1/90 backdrop-blur w-[200px] text-center">
           <div className="label text-left">Risk level</div>
-          <ArcGauge value={risk.score} level={risk.level} size={168} label={t('lvl.short.' + risk.level)} />
-          <div className="flex justify-between text-[10px] font-semibold tracking-[0.14em] -mt-1">
-            {['low', 'medium', 'high'].map((l) => <span key={l} style={{ color: risk.level === l ? LEVEL_COLOR[l] : '#838e99' }}>{t('lvl.short.' + l)}</span>)}
+          <ArcGauge value={Math.round(risk.score)} level={risk.level} size={168} label={risk.pending ? '…' : t('lvl.short.' + risk.level)} />
+          <div className="flex justify-between gap-1.5 text-[9px] font-semibold tracking-[0.08em] -mt-1">
+            {['low', 'medium', 'high', 'critical'].map((l) => <span key={l} style={{ color: risk.level === l ? LEVEL_COLOR[l] : '#838e99' }}>{t('lvl.short.' + l)}</span>)}
           </div>
-          <div className="num text-xs text-ink2 mt-2">{phase === 'ready' ? 'Predicted at 4 m contact' : `Worker ${Math.max(0, dist).toFixed(1)} m`} · zone {zoneR.toFixed(1)} m</div>
+          <div className="num text-xs text-ink2 mt-2">{phase === 'ready' ? 'Model risk if a worker is 4 m away' : `Worker ${Math.max(0, dist).toFixed(1)} m`} · zone {zoneR.toFixed(1)} m</div>
+          <div className="text-[10px] text-ink3 mt-1">safety model {riskQ.error ? '· offline' : '· live'}</div>
+          {risk.warnings?.length > 0 && <div className="text-[10px] text-caution mt-1 text-left">⚠ {risk.warnings[0]}</div>}
         </div>
 
         {/* HUD: controls dock */}
@@ -135,7 +154,7 @@ export default function Simulator({ nav }) {
           {phase === 'analysis' && (
             <motion.aside initial={{ x: 60, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute z-20 right-4 top-4 bottom-4 sm:top-4 sm:bottom-auto sm:w-[400px] left-4 sm:left-auto panel p-5 bg-bg1/95 backdrop-blur overflow-y-auto">
-              <Analysis choice={choice} before={before} after={risk} onRetry={reset} onContinue={() => nav('training')} />
+              <Analysis choice={choice} before={before} after={risk} decision={decision} onRetry={reset} onContinue={() => nav('training')} />
             </motion.aside>
           )}
         </AnimatePresence>
@@ -148,29 +167,45 @@ function outcomeSpeed(choice, speed) {
   return { A: speed, B: Math.min(speed, 1.5), C: 0, D: Math.max(speed, 7) }[choice] ?? speed;
 }
 
-function Analysis({ choice, before, after, onRetry, onContinue }) {
+function Analysis({ choice, before, after, decision, onRetry, onContinue }) {
   const { t } = useI18n();
   const o = OPTIONS.find((x) => x.id === choice);
-  const imp = {
+  const IMP = {
     best: { label: 'Positive · best choice', col: 'text-safe', icon: CheckCircle2 },
     positive: { label: 'Positive', col: 'text-safe', icon: CheckCircle2 },
     negative: { label: 'Negative', col: 'text-caution', icon: MinusCircle },
     critical: { label: 'Negative · high risk', col: 'text-critical', icon: XCircle },
-  }[o.impact];
+  };
+  const chosen = decision?.chosen;
+  const imp = chosen ? IMP[chosen.impact] : null;
   return (
     <div>
       <div className="label text-assist">Decision analysis</div>
       <div className="grid grid-cols-2 gap-3 mt-3">
         <div className="rounded-md bg-bg3/60 border border-line p-3"><div className="label">Your decision</div><div className="font-display text-4xl font-bold mt-1">{o.id}</div><div className="text-sm text-ink2">{t(o.key)}</div></div>
-        <div className="rounded-md bg-bg3/60 border border-line p-3"><div className="label">Safety impact</div><imp.icon className={cx('mt-2', imp.col)} size={28} /><div className={cx('font-semibold mt-1', imp.col)}>{imp.label}</div></div>
+        <div className="rounded-md bg-bg3/60 border border-line p-3"><div className="label">Safety impact</div>
+          {imp ? <><imp.icon className={cx('mt-2', imp.col)} size={28} /><div className={cx('font-semibold mt-1', imp.col)}>{imp.label}</div></>
+            : <div className="text-sm text-ink3 mt-2">{decision?.error ? 'Model unavailable' : 'Scoring…'}</div>}
+        </div>
       </div>
       <div className="rounded-md bg-bg3/60 border border-line p-3 mt-3">
-        <div className="label">Simulated risk</div>
+        <div className="label">Simulated risk (safety model)</div>
         <div className="flex items-center gap-3 mt-2 num text-lg">
-          <span style={{ color: LEVEL_COLOR[before.level] }}>{before.score}</span><span className="text-ink3">→</span>
-          <span style={{ color: LEVEL_COLOR[after.level] }}>{after.score}</span>
+          <span style={{ color: LEVEL_COLOR[before.level] }}>{Math.round(before.score)}</span><span className="text-ink3">→</span>
+          <span style={{ color: LEVEL_COLOR[after.level] }}>{Math.round(after.score)}</span>
           <StatusPill level={after.level}>{t('lvl.short.' + after.level)}</StatusPill>
         </div>
+        {decision?.options && (
+          <ul className="mt-3 space-y-1 text-sm">
+            {decision.options.map((x) => (
+              <li key={x.id} className={cx('flex items-center gap-2', x.id === choice && 'font-semibold')}>
+                <span className="num w-5">{x.id}</span><span className="flex-1 truncate">{t(OPTIONS.find((y) => y.id === x.id).key)}</span>
+                <span className="num" style={{ color: LEVEL_COLOR[ui(x.level)] }}>{Math.round(x.score)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-[11px] text-ink3 mt-2">Each option's resulting state is scored by the same model that drives the live alerts.</p>
       </div>
       <div className="mt-4"><div className="label">Why</div><p className="mt-1 text-[15px] leading-relaxed">{o.why}</p></div>
       <Disclaimer className="mt-4" />
@@ -231,7 +266,7 @@ function Scene({ sim, phase, choice, ctl, zoneR, level, onTick, onReachZone, cam
     // zone ring follows machine, pulses when risk ≥ medium
     const pulse = level === 'low' ? 1 : 0.75 + Math.sin(s.t * 4) * 0.25;
     if (ring.current) { ring.current.position.z = s.machineZ; ring.current.material.opacity = 0.85 * pulse; }
-    if (disk.current) { disk.current.position.z = s.machineZ; disk.current.material.opacity = (level === 'high' ? 0.22 : 0.12) * pulse; }
+    if (disk.current) { disk.current.position.z = s.machineZ; disk.current.material.opacity = (level === 'high' || level === 'critical' ? 0.22 : 0.12) * pulse; }
 
     // camera
     if (cam === 'cab') {

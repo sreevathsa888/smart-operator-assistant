@@ -4,6 +4,16 @@ import React, { createContext, useContext, useState, useCallback } from 'react';
 // Hindi and Telugu cover navigation and headline strings; anything missing falls back to English.
 const dict = {
   en: {
+    'lvl.critical': 'Critical risk', 'lvl.short.critical': 'CRITICAL',
+    'alert.title.proximity': 'Potential proximity risk', 'alert.title.speed': 'Speed risk rising', 'alert.title.terrain': 'Potential stability risk',
+    'alert.title.load': 'Load risk rising', 'alert.title.visibility': 'Low-visibility risk', 'alert.title.machine': 'Machine condition risk', 'alert.title.control': 'Control behaviour risk',
+    'rec.proximity': 'Stop and verify surroundings before moving.', 'rec.speed': 'Reduce speed and verify surroundings.',
+    'rec.terrain': 'Reduce load, keep the bucket low and travel straight on the slope.', 'rec.load': 'Reduce the load before moving.',
+    'rec.visibility': 'Slow down and use a spotter until visibility improves.', 'rec.machine': 'Reduce load and check machine temperatures.',
+    'rec.control': 'Use smoother control inputs and reduce speed.',
+    'alert.body.approach': 'A worker is closing on the machine\'s restricted operating zone.',
+    'alert.predicted': 'Predicted risk in 5 s', 'alert.typical': 'typical safe', 'alert.risklabel': 'Predicted risk', 'shell.endshift': 'End shift', 'alert.monitoring': 'Action taken · monitoring', 'alert.stopped': 'Machine stopped — risk reducing',
+    'login.title': 'Start shift', 'login.sub': 'Select your operator ID to load your digital twin, tasks and training.', 'login.go': 'Start shift',
     'nav.overview': 'Overview', 'nav.machine': 'Live Machine', 'nav.tasks': 'Tasks', 'nav.safety': 'Safety Center',
     'nav.twin': 'Operator Twin', 'nav.training': 'Training Hub', 'nav.sim': '3D Simulator', 'nav.replay': 'Safety Replay',
     'nav.whatif': 'What-if', 'nav.analytics': 'Analytics',
@@ -39,6 +49,16 @@ const dict = {
     'disclaimer': 'Scenario simulation — not a guarantee of real-world outcome.',
   },
   ta: {
+    'lvl.critical': 'மிக அதிக அபாயம்', 'lvl.short.critical': 'தீவிரம்',
+    'alert.title.proximity': 'அருகாமை அபாயம் சாத்தியம்', 'alert.title.speed': 'வேக அபாயம் அதிகரிக்கிறது', 'alert.title.terrain': 'நிலைத்தன்மை அபாயம் சாத்தியம்',
+    'alert.title.load': 'சுமை அபாயம் அதிகரிக்கிறது', 'alert.title.visibility': 'குறைந்த தெரிவுநிலை அபாயம்', 'alert.title.machine': 'இயந்திர நிலை அபாயம்', 'alert.title.control': 'கட்டுப்பாட்டு நடத்தை அபாயம்',
+    'rec.proximity': 'நகர்வதற்கு முன் நிறுத்தி சுற்றுப்புறத்தைச் சரிபார்க்கவும்.', 'rec.speed': 'வேகத்தைக் குறைத்து சுற்றுப்புறத்தைச் சரிபார்க்கவும்.',
+    'rec.terrain': 'சுமையைக் குறைத்து, வாளியைத் தாழ்வாக வைத்து, சரிவில் நேராகச் செல்லவும்.', 'rec.load': 'நகர்வதற்கு முன் சுமையைக் குறைக்கவும்.',
+    'rec.visibility': 'தெரிவுநிலை மேம்படும் வரை மெதுவாகச் சென்று வழிகாட்டியைப் பயன்படுத்தவும்.', 'rec.machine': 'சுமையைக் குறைத்து இயந்திர வெப்பநிலையைச் சரிபார்க்கவும்.',
+    'rec.control': 'மென்மையான கட்டுப்பாட்டைப் பயன்படுத்தி வேகத்தைக் குறைக்கவும்.',
+    'alert.body.approach': 'ஒரு பணியாளர் இயந்திரத்தின் தடைசெய்யப்பட்ட பகுதியை நெருங்குகிறார்.',
+    'alert.predicted': '5 வினாடிகளில் கணிக்கப்பட்ட அபாயம்', 'alert.typical': 'வழக்கமான பாதுகாப்பான அளவு', 'alert.risklabel': 'கணிக்கப்பட்ட அபாயம்', 'shell.endshift': 'ஷிப்டை முடி', 'alert.monitoring': 'நடவடிக்கை எடுக்கப்பட்டது · கண்காணிப்பு', 'alert.stopped': 'இயந்திரம் நிறுத்தப்பட்டது — அபாயம் குறைகிறது',
+    'login.title': 'ஷிப்டைத் தொடங்கு', 'login.sub': 'உங்கள் டிஜிட்டல் இரட்டை, பணிகள், பயிற்சியை ஏற்ற இயக்குநர் அடையாளத்தைத் தேர்ந்தெடுக்கவும்.', 'login.go': 'ஷிப்டைத் தொடங்கு',
     'nav.overview': 'மேலோட்டம்', 'nav.machine': 'நேரடி இயந்திரம்', 'nav.tasks': 'பணிகள்', 'nav.safety': 'பாதுகாப்பு மையம்',
     'nav.twin': 'இயக்குநர் இரட்டை', 'nav.training': 'பயிற்சி மையம்', 'nav.sim': '3D உருவகப்படுத்தி', 'nav.replay': 'பாதுகாப்பு மறுஒளிபரப்பு',
     'nav.whatif': 'என்ன-ஆனால்', 'nav.analytics': 'பகுப்பாய்வு',
@@ -74,6 +94,9 @@ const dict = {
     'disclaimer': 'உருவகப்படுத்தப்பட்ட சூழ்நிலை — நிஜ உலக விளைவுக்கான உத்தரவாதம் அல்ல.',
   },
   hi: {
+    'lvl.critical': 'गंभीर जोखिम', 'lvl.short.low': 'कम', 'lvl.short.medium': 'मध्यम', 'lvl.short.high': 'उच्च', 'lvl.short.critical': 'गंभीर',
+    'alert.title.proximity': 'संभावित निकटता जोखिम', 'rec.proximity': 'चलने से पहले रुकें और आसपास की जाँच करें।', 'rec.speed': 'गति कम करें और आसपास की जाँच करें।',
+    'login.title': 'शिफ्ट शुरू करें', 'login.go': 'शिफ्ट शुरू करें',
     'nav.overview': 'अवलोकन', 'nav.machine': 'लाइव मशीन', 'nav.tasks': 'कार्य', 'nav.safety': 'सुरक्षा केंद्र',
     'nav.twin': 'ऑपरेटर ट्विन', 'nav.training': 'प्रशिक्षण केंद्र', 'nav.sim': '3D सिम्युलेटर', 'nav.replay': 'सुरक्षा रीप्ले',
     'nav.whatif': 'क्या-अगर', 'nav.analytics': 'विश्लेषण', 'op.role': 'ऑपरेटर', 'op.onduty': 'ड्यूटी पर',
@@ -84,6 +107,9 @@ const dict = {
     'sub.3': 'चलने से पहले हमेशा मशीन के आसपास के क्षेत्र की जाँच करें।',
   },
   te: {
+    'lvl.critical': 'తీవ్ర ప్రమాదం', 'lvl.short.low': 'తక్కువ', 'lvl.short.medium': 'మధ్యస్థం', 'lvl.short.high': 'అధికం', 'lvl.short.critical': 'తీవ్రం',
+    'alert.title.proximity': 'సంభావ్య సామీప్య ప్రమాదం', 'rec.proximity': 'కదలడానికి ముందు ఆపి పరిసరాలను తనిఖీ చేయండి.', 'rec.speed': 'వేగం తగ్గించి పరిసరాలను తనిఖీ చేయండి.',
+    'login.title': 'షిఫ్ట్ ప్రారంభించండి', 'login.go': 'షిఫ్ట్ ప్రారంభించండి',
     'nav.overview': 'అవలోకనం', 'nav.machine': 'లైవ్ యంత్రం', 'nav.tasks': 'పనులు', 'nav.safety': 'భద్రతా కేంద్రం',
     'nav.twin': 'ఆపరేటర్ ట్విన్', 'nav.training': 'శిక్షణ కేంద్రం', 'nav.sim': '3D సిమ్యులేటర్', 'nav.replay': 'భద్రతా రీప్లే',
     'nav.whatif': 'ఏమైతే', 'nav.analytics': 'విశ్లేషణ', 'op.role': 'ఆపరేటర్', 'op.onduty': 'విధిలో',

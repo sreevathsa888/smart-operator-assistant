@@ -4,19 +4,12 @@ import { Play, Pause, RotateCcw, Captions, Languages, Gauge, ArrowLeft, CheckCir
 import MachinePlan from '../components/MachinePlan.jsx';
 import { AnimatedNumber, cx } from '../components/ui/index.jsx';
 import { useI18n, LANGS } from '../lib/i18n.jsx';
+import { api } from '../api/client.js';
 
-const DUR = 102; // 01:42
-const CHAPTERS = [
-  { t: 0, name: 'Blind zones', sub: 'sub.1' },
-  { t: 20, name: 'Hidden worker', sub: 'sub.2' },
-  { t: 40, name: 'Verify', sub: 'sub.3' },
-  { t: 62, name: 'Stop', sub: 'sub.4' },
-  { t: 82, name: 'Resume', sub: 'sub.5' },
-];
 const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const lerp = (a, b, k) => a + (b - a) * Math.max(0, Math.min(1, k));
 
-function sceneAt(t) {
+function blindScene(t) {
   // worker path: from outside (rear-left) → into blind zone → restricted → back out
   let wx, wy;
   if (t < 20) { wx = -7.5; wy = 6.5; }
@@ -25,14 +18,25 @@ function sceneAt(t) {
   else if (t < 82) { wx = -2.6; wy = 2.0; }
   else { const k = (t - 82) / 20; wx = lerp(-2.6, -7.5, k); wy = lerp(2.0, 6.5, k); }
   const d = Math.max(0, Math.hypot(wx, wy) - 1.6);
-  const level = d < 2 ? 'high' : d < 4 ? 'medium' : 'low';
-  const stopped = t >= 62 && t < 90;
-  return { worker: { x: wx, y: wy }, d, level, stopped, scan: t >= 40 && t < 62 };
+  // illustrative colouring for the lesson (restricted zone 3 m / proximity zone 6 m), not a model prediction
+  const level = d < 3 ? 'high' : d < 6 ? 'medium' : 'low';
+  return { worker: { x: wx, y: wy }, d, level, stopped: t >= 62 && t < 90, scan: t >= 40 && t < 62 };
 }
 
-export default function Microlearning({ title, onExit }) {
+function sceneAt(anim, t, dur) {
+  if (anim === 'blind_zone') return blindScene(t);
+  const far = { worker: { x: -8, y: -8 }, d: 9.7, level: 'low', stopped: false, scan: false };
+  if (anim === 'idle') { const idleMin = Math.round((t / dur) * 42); return { ...far, hud: `Idle ${idleMin} min · ≈${(idleMin / 60 * 4.2).toFixed(1)} L burned with no output` }; }
+  if (anim === 'slope') { const g = Math.round(4 + (t / dur) * 12); return { ...far, level: g > 11 ? 'medium' : 'low', hud: `Grade ${g}° · bucket low · travel straight` }; }
+  return far;
+}
+
+export default function Microlearning({ module: mod, title, onExit, operatorId, onCompleted }) {
   const { t: tr, lang, setLang } = useI18n();
-  const [t, setT] = useState(42);
+  const DUR = mod.duration_s;
+  const CHAPTERS = mod.chapters?.length ? mod.chapters : [{ t: 0, name: { en: title }, sub: { en: mod.description } }];
+  const loc = (d) => (typeof d === 'string' ? d : d?.[lang] ?? d?.en ?? '');
+  const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [subs, setSubs] = useState(true);
@@ -56,7 +60,7 @@ export default function Microlearning({ title, onExit }) {
     return () => cancelAnimationFrame(raf);
   }, [playing, speed]);
 
-  const sc = sceneAt(t);
+  const sc = sceneAt(mod.animation, t, DUR);
   const chap = [...CHAPTERS].reverse().find((c) => t >= c.t);
 
   return (
@@ -76,7 +80,8 @@ export default function Microlearning({ title, onExit }) {
             </div>
             {/* scene HUD */}
             <div className="absolute top-3 left-3 flex gap-2">
-              <span className="text-[11px] font-semibold tracking-[0.14em] uppercase bg-bg1/85 border border-line rounded-sm px-2 py-1">{chap.name}</span>
+              <span className="text-[11px] font-semibold tracking-[0.14em] uppercase bg-bg1/85 border border-line rounded-sm px-2 py-1">{loc(chap.name)}</span>
+              {sc.hud && <span className="text-[11px] font-semibold tracking-[0.1em] bg-assist/20 text-assist rounded-sm px-2 py-1">{sc.hud}</span>}
               {sc.stopped && <span className="text-[11px] font-semibold tracking-[0.14em] uppercase bg-critical text-onsig rounded-sm px-2 py-1">Machine stopped</span>}
               {sc.scan && <span className="text-[11px] font-semibold tracking-[0.14em] uppercase bg-assist/20 text-assist rounded-sm px-2 py-1">Checking mirrors · camera</span>}
             </div>
@@ -88,9 +93,9 @@ export default function Microlearning({ title, onExit }) {
             )}
             <AnimatePresence>
               {subs && (
-                <motion.div key={chap.sub + lang} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                <motion.div key={chap.t + lang} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
                   className="absolute bottom-4 inset-x-4 flex justify-center pointer-events-none">
-                  <p className="bg-black/75 text-ink text-base sm:text-lg px-4 py-2 rounded-md text-center max-w-[90%]">“{tr(chap.sub)}”</p>
+                  <p className="bg-black/75 text-ink text-base sm:text-lg px-4 py-2 rounded-md text-center max-w-[90%]">“{loc(chap.sub)}”</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -115,7 +120,7 @@ export default function Microlearning({ title, onExit }) {
               <label className="btn px-3 relative">
                 <Languages size={18} />
                 <select aria-label="Subtitle language" value={lang} onChange={(e) => setLang(e.target.value)} className="bg-transparent outline-none normal-case tracking-normal cursor-pointer">
-                  {LANGS.map((l) => <option key={l.id} value={l.id} className="bg-bg2">{l.label}</option>)}
+                  {LANGS.map((l) => <option key={l.id} value={l.id} className="bg-bg2">{l.label}{(mod.languages ?? ['en']).includes(l.id) ? '' : ' (EN subtitles)'}</option>)}
                 </select>
               </label>
               <button className="btn px-3" onClick={() => setSpeed((s) => (s === 2 ? 0.75 : s === 0.75 ? 1 : s === 1 ? 1.5 : 2))} aria-label="Playback speed"><Gauge size={18} /><span className="num">{speed}×</span></button>
@@ -126,14 +131,14 @@ export default function Microlearning({ title, onExit }) {
         {/* Side: chapters / quick check */}
         <div className="xl:col-span-4 space-y-4">
           <AnimatePresence mode="wait">
-            {done ? <QuickCheck key="qc" onReplay={() => { setT(0); setDone(false); }} /> : (
+            {done ? <QuickCheck key="qc" mod={mod} loc={loc} operatorId={operatorId} onCompleted={onCompleted} onReplay={() => { setT(0); setDone(false); }} /> : (
               <motion.div key="ch" className="panel p-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <h2 className="ptitle mb-3">Chapters</h2>
                 <ol className="space-y-1">
                   {CHAPTERS.map((c) => (
                     <li key={c.t}>
                       <button onClick={() => { setT(c.t); setDone(false); }} className={cx('w-full min-h-[48px] px-3 rounded-md flex items-center gap-3 text-left hover:bg-bg3', chap.t === c.t && 'bg-bg3')}>
-                        <span className="num text-xs text-ink3 w-10">{mmss(c.t)}</span><span className="flex-1">{c.name}</span>
+                        <span className="num text-xs text-ink3 w-10">{mmss(c.t)}</span><span className="flex-1">{loc(c.name)}</span>
                         {t > c.t + 15 && <CheckCircle2 size={16} className="text-safe" />}
                       </button>
                     </li>
@@ -149,31 +154,51 @@ export default function Microlearning({ title, onExit }) {
   );
 }
 
-function QuickCheck({ onReplay }) {
+function QuickCheck({ mod, loc, operatorId, onReplay, onCompleted }) {
   const { t } = useI18n();
   const [pick, setPick] = useState(null);
-  const correct = 'C';
-  const opts = [['A', 'qc.a'], ['B', 'qc.b'], ['C', 'qc.c'], ['D', 'qc.d']];
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState(null);
+  const quiz = mod.quiz;
+  const submit = async (k, correct) => {
+    setPick(k);
+    try { const r = await api.completeTraining(operatorId, mod.id, correct, k); setResult(r); onCompleted?.(); } catch (e) { setErr(e); }
+  };
+  if (!quiz) {
+    return (
+      <motion.div className="panel p-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="label text-assist">Recap</div>
+        <p className="text-lg font-semibold mt-2 leading-snug">{mod.description}</p>
+        {result ? <p className="mt-4 text-safe">Module recorded as completed. (No assessment — training score unchanged.)</p>
+          : <button className="btn btn-primary w-full mt-4" onClick={() => submit('watched', true)}>Mark as completed</button>}
+        {err && <p className="mt-3 text-sm text-critical">{err.message}</p>}
+      </motion.div>
+    );
+  }
+  const correct = quiz.correct;
+  const text = (o) => (o.key ? t(o.key) : loc(o.text));
   const right = pick === correct;
   return (
     <motion.div className="panel p-5" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
       <div className="label text-assist">{t('qc.title')}</div>
-      <p className="text-lg font-semibold mt-2 leading-snug">{t('qc.q')}</p>
+      <p className="text-lg font-semibold mt-2 leading-snug">{quiz.question_key ? t(quiz.question_key) : loc(quiz.question)}</p>
       <div className="space-y-2 mt-4">
-        {opts.map(([k, key]) => {
+        {quiz.options.map((o) => {
+          const k = o.id;
           const state = pick && (k === correct ? 'right' : k === pick ? 'wrong' : null);
           return (
-            <button key={k} disabled={!!pick} onClick={() => setPick(k)}
+            <button key={k} disabled={!!pick} onClick={() => submit(k, k === correct)}
               className={cx('w-full min-h-[56px] rounded-md border px-4 flex items-center gap-3 text-left transition-colors',
                 state === 'right' ? 'border-safe bg-safe/10' : state === 'wrong' ? 'border-critical bg-critical/10' : 'border-ctl hover:bg-bg3')}>
-              <span className="font-display text-xl font-semibold w-6">{k}</span><span className="flex-1">{t(key)}</span>
+              <span className="font-display text-xl font-semibold w-6">{k}</span><span className="flex-1">{text(o)}</span>
               {state === 'right' && <CheckCircle2 className="text-safe" size={20} />}{state === 'wrong' && <XCircle className="text-critical" size={20} />}
             </button>
           );
         })}
       </div>
+      {err && <p className="mt-3 text-sm text-critical">{err.message}</p>}
       <AnimatePresence>
-        {pick && (
+        {pick && result && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="overflow-hidden">
             {right ? (
               <div className="mt-5 rounded-md bg-safe/10 border border-safe/50 p-4 text-center">
@@ -181,12 +206,13 @@ function QuickCheck({ onReplay }) {
                   <Award size={44} className="text-safe" />
                 </motion.div>
                 <div className="font-display text-xl font-semibold uppercase tracking-wide mt-1">Module complete</div>
-                <div className="text-sm text-ink2 mt-1">Awareness score updated in your Digital Twin</div>
-                <div className="font-display text-4xl font-semibold mt-2"><span className="text-ink3">84 → </span><AnimatedNumber from={84} value={87} className="text-safe" /></div>
+                <div className="text-sm text-ink2 mt-1">Training score updated in your Digital Twin ({result.rule})</div>
+                <div className="font-display text-4xl font-semibold mt-2"><span className="text-ink3">{result.training_score.before} → </span><AnimatedNumber from={result.training_score.before} value={result.training_score.after} decimals={1} className="text-safe" /></div>
               </div>
             ) : (
               <div className="mt-5 rounded-md bg-critical/10 border border-critical/50 p-4 text-sm">
-                Not quite. Stopping lets you confirm where the worker is before any movement — reversing may move the machine <i>toward</i> someone you can't see.
+                Not quite. {loc(quiz.feedback_wrong)}
+                <div className="text-xs text-ink3 mt-2">Training score {result.training_score.before} → {result.training_score.after}</div>
                 <button className="btn w-full mt-3" onClick={onReplay}>Rewatch the key moment</button>
               </div>
             )}

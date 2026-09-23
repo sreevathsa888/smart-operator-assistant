@@ -3,20 +3,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Gamepad2, PlayCircle, Clock, BarChart2, Target, CheckCircle2, Sparkles, ArrowRight, Award } from 'lucide-react';
 import { Panel, ScreenTitle, StatusPill, cx } from '../components/ui/index.jsx';
 import { useI18n } from '../lib/i18n.jsx';
-import { trainingModules } from '../data/mock.js';
+import { api } from '../api/client.js';
+import { useApi } from '../hooks/useApi.js';
+import { ApiState } from '../components/ApiState.jsx';
 import Microlearning from './Microlearning.jsx';
 
 const CATS = ['All', 'Safety', 'Efficiency', 'Emergency', 'Machine Operation', 'Fuel Management'];
 
-export default function TrainingHub({ nav }) {
-  const { t } = useI18n();
+export default function TrainingHub({ nav, operatorId, dataVersion, refresh }) {
+  const { t, lang } = useI18n();
   const [cat, setCat] = useState('All');
   const [playing, setPlaying] = useState(null);
-  const title = (m) => (m.titleKey ? t(m.titleKey) : m.title);
+  const q = useApi(() => api.training(operatorId), [operatorId, dataVersion]);
+  const title = (m) => (m.titleKey ? t(m.titleKey) : m.title_i18n?.[lang] ?? m.title);
   const start = (m) => (m.kind === 'sim' && m.id !== 'blind' ? nav('simulator') : setPlaying(m));
 
-  if (playing) return <Microlearning module={playing} title={title(playing)} onExit={() => setPlaying(null)} />;
+  if (playing) return <Microlearning module={playing} title={title(playing)} operatorId={operatorId}
+    onExit={() => { setPlaying(null); q.reload(true); }} onCompleted={() => { refresh?.(); }} />;
+  if (!q.data) return <ApiState loading={q.loading} error={q.error} data={q.data} onRetry={q.reload} rows={3} label="Loading training" />;
 
+  const trainingModules = q.data.modules;
   const rec = trainingModules.filter((m) => m.status === 'recommended');
   const all = trainingModules.filter((m) => cat === 'All' || m.cat === cat);
   const done = trainingModules.filter((m) => m.status === 'completed').length;
@@ -26,13 +32,13 @@ export default function TrainingHub({ nav }) {
       <ScreenTitle eyebrow="Learn" title={t('train.title')} sub={t('train.sub')}
         right={<div className="flex items-center gap-4 panel px-4 py-3">
           <Award size={28} className="text-assist" />
-          <div><div className="label">Safety academy</div><div className="num">{done}/{trainingModules.length} modules · Level 3</div></div>
+          <div><div className="label">Safety academy</div><div className="num">{done}/{trainingModules.length} modules</div></div>
           <div className="w-24 h-1.5 bg-bg3 rounded-sm"><div className="h-full bg-assist rounded-sm" style={{ width: `${(done / trainingModules.length) * 100}%` }} /></div>
         </div>} />
 
       <section aria-labelledby="rec">
         <div className="flex items-end justify-between mb-3">
-          <div><h2 id="rec" className="ptitle">{t('train.rec')}</h2><p className="text-sm text-ink2 mt-1">{t('train.based')}: 2 proximity events, idle above baseline, work on 11° slope.</p></div>
+          <div><h2 id="rec" className="ptitle">{t('train.rec')}</h2><p className="text-sm text-ink2 mt-1">{t('train.based')}: {q.data.summary.length ? q.data.summary.join(' · ') : 'no triggers — nothing urgent.'}</p></div>
         </div>
         <div className="grid md:grid-cols-3 gap-4">
           {rec.map((m, i) => (
@@ -54,7 +60,7 @@ export default function TrainingHub({ nav }) {
                 <div className="mt-auto pt-5 grid gap-2">
                   {m.id === 'blind' ? (
                     <>
-                      <button onClick={() => setPlaying(m)} className="btn btn-primary w-full"><PlayCircle size={18} />Watch · 01:42</button>
+                      <button onClick={() => setPlaying(m)} className="btn btn-primary w-full"><PlayCircle size={18} />Watch · {m.dur}</button>
                       <button onClick={() => nav('simulator')} className="btn btn-assist w-full"><Gamepad2 size={18} />Practice in 3D simulator</button>
                     </>
                   ) : (

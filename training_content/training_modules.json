@@ -1,0 +1,805 @@
+{
+ "version": "1.0",
+ "note": "Project training content (not official CAT material). trigger_conditions are evaluated against operator metrics by backend/services/training.py.",
+ "modules": [
+  {
+   "id": "blind",
+   "title_key": "mod.blind",
+   "title": {
+    "en": "Blind-Zone Awareness",
+    "ta": "குருட்டு மண்டல விழிப்புணர்வு",
+    "hi": "ब्लाइंड-ज़ोन जागरूकता",
+    "te": "బ్లైండ్-జోన్ అవగాహన"
+   },
+   "category": "Safety",
+   "kind": "sim",
+   "duration_s": 102,
+   "difficulty": "Intermediate",
+   "skills": [
+    "Awareness"
+   ],
+   "description": "Why workers disappear from view behind and beside the machine, and the stop–verify–resume routine.",
+   "animation": "blind_zone",
+   "media": "microlearning:blind_zone (animated plan view, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "proximity_events_14d",
+     "op": ">=",
+     "value": 1
+    },
+    {
+     "metric": "awareness_score",
+     "op": "<",
+     "value": 40
+    },
+    {
+     "metric": "anomaly_reason",
+     "op": "==",
+     "value": "Repeated_Proximity_Violations"
+    }
+   ],
+   "reason_templates": {
+    "proximity_events_14d": "{proximity_events_14d} proximity event(s) in the last 14 days",
+    "awareness_score": "awareness score {awareness_score} (bottom 40 % of recorded sessions)",
+    "anomaly_reason": "repeated proximity violations this shift"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "interactive question",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Blind zones",
+      "ta": "குருட்டு மண்டலங்கள்",
+      "hi": "ब्लाइंड ज़ोन",
+      "te": "బ్లైండ్ జోన్లు"
+     },
+     "sub_key": "sub.1",
+     "sub": {
+      "en": "Before moving, look around the whole machine — not just ahead.",
+      "ta": "நகர்வதற்கு முன், முன்னால் மட்டுமல்ல — இயந்திரம் முழுவதையும் சுற்றிப் பாருங்கள்.",
+      "hi": "चलने से पहले पूरी मशीन के चारों ओर देखें — सिर्फ़ आगे नहीं।",
+      "te": "కదలడానికి ముందు ముందుకు మాత్రమే కాదు — యంత్రం చుట్టూ చూడండి."
+     }
+    },
+    {
+     "t": 20,
+     "name": {
+      "en": "Hidden worker",
+      "ta": "மறைந்த தொழிலாளர்",
+      "hi": "छिपा कर्मचारी",
+      "te": "కనిపించని కార్మికుడు"
+     },
+     "sub_key": "sub.2",
+     "sub": {
+      "en": "Workers can stand inside zones the mirrors and camera cannot see.",
+      "ta": "கண்ணாடிகளும் கேமராவும் பார்க்க முடியாத இடங்களில் தொழிலாளர்கள் நிற்கலாம்.",
+      "hi": "कर्मचारी ऐसे क्षेत्रों में खड़े हो सकते हैं जिन्हें शीशे और कैमरा नहीं देख सकते।",
+      "te": "అద్దాలు, కెమెరా చూడలేని ప్రాంతాల్లో కార్మికులు నిలబడవచ్చు."
+     }
+    },
+    {
+     "t": 40,
+     "name": {
+      "en": "Verify",
+      "ta": "சரிபார்",
+      "hi": "जाँचें",
+      "te": "తనిఖీ"
+     },
+     "sub_key": "sub.3",
+     "sub": {
+      "en": "Always verify the area around the machine before moving.",
+      "ta": "நகர்வதற்கு முன் இயந்திரத்தைச் சுற்றியுள்ள பகுதியை எப்போதும் சரிபார்க்கவும்.",
+      "hi": "चलने से पहले हमेशा मशीन के आसपास के क्षेत्र की जाँच करें।",
+      "te": "కదలడానికి ముందు ఎల్లప్పుడూ యంత్రం చుట్టూ ఉన్న ప్రాంతాన్ని తనిఖీ చేయండి."
+     }
+    },
+    {
+     "t": 62,
+     "name": {
+      "en": "Stop",
+      "ta": "நிறுத்து",
+      "hi": "रुकें",
+      "te": "ఆపండి"
+     },
+     "sub_key": "sub.4",
+     "sub": {
+      "en": "If a worker enters the restricted zone, stop and make eye contact.",
+      "ta": "தொழிலாளர் தடைசெய்யப்பட்ட பகுதிக்குள் வந்தால், நிறுத்தி கண் தொடர்பு கொள்ளுங்கள்.",
+      "hi": "अगर कोई कर्मचारी प्रतिबंधित क्षेत्र में आए, तो रुकें और आँख से संपर्क करें।",
+      "te": "కార్మికుడు నిషిద్ధ ప్రాంతంలోకి వస్తే, ఆపి కంటి సంబంధం చేయండి."
+     }
+    },
+    {
+     "t": 82,
+     "name": {
+      "en": "Resume",
+      "ta": "மீண்டும் தொடர்",
+      "hi": "फिर शुरू करें",
+      "te": "మళ్ళీ ప్రారంభించండి"
+     },
+     "sub_key": "sub.5",
+     "sub": {
+      "en": "Resume only when the zone is clear and the worker has signalled.",
+      "ta": "பகுதி தெளிவாகி தொழிலாளர் சைகை காட்டிய பின்னரே மீண்டும் தொடருங்கள்.",
+      "hi": "क्षेत्र खाली होने और कर्मचारी के संकेत देने पर ही फिर शुरू करें।",
+      "te": "ప్రాంతం ఖాళీగా ఉండి కార్మికుడు సంకేతం ఇచ్చిన తర్వాతే మళ్ళీ ప్రారంభించండి."
+     }
+    }
+   ],
+   "quiz": {
+    "question_key": "qc.q",
+    "question": {
+     "en": "What should the operator do when a worker enters the restricted zone?",
+     "ta": "தடைசெய்யப்பட்ட பகுதிக்குள் தொழிலாளர் நுழைந்தால் இயக்குநர் என்ன செய்ய வேண்டும்?"
+    },
+    "options": [
+     {
+      "id": "A",
+      "key": "qc.a"
+     },
+     {
+      "id": "B",
+      "key": "qc.b"
+     },
+     {
+      "id": "C",
+      "key": "qc.c"
+     },
+     {
+      "id": "D",
+      "key": "qc.d"
+     }
+    ],
+    "correct": "C",
+    "feedback_wrong": {
+     "en": "Stopping lets you confirm where the worker is before any movement — reversing may move the machine toward someone you can't see."
+    }
+   },
+   "languages": [
+    "en",
+    "ta",
+    "hi",
+    "te"
+   ]
+  },
+  {
+   "id": "idle",
+   "title_key": "mod.idle",
+   "title": {
+    "en": "Reducing Excessive Idling",
+    "ta": "அதிகப்படியான ஐட்லிங்கைக் குறைத்தல்",
+    "hi": "अत्यधिक निष्क्रियता कम करना",
+    "te": "అధిక ఐడ్లింగ్ తగ్గించడం"
+   },
+   "category": "Fuel Management",
+   "kind": "video",
+   "duration_s": 102,
+   "difficulty": "Beginner",
+   "skills": [
+    "Efficiency"
+   ],
+   "description": "Why idle time matters for fuel and wear, and simple habits that turn waiting into working.",
+   "animation": "idle",
+   "media": "microlearning:idle (fuel gauge animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "idle_anomaly",
+     "op": "==",
+     "value": true
+    },
+    {
+     "metric": "idle_median_vs_fleet_pct",
+     "op": ">=",
+     "value": 75
+    }
+   ],
+   "reason_templates": {
+    "idle_anomaly": "idle {idle_current} min/2 h vs your typical {idle_band}",
+    "idle_median_vs_fleet_pct": "your typical idle is higher than {idle_median_vs_fleet_pct}% of operators"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "interactive question",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "The hidden cost",
+      "ta": "மறைந்த செலவு"
+     },
+     "sub": {
+      "en": "An idling engine still burns about a quarter to a third of working fuel.",
+      "ta": "சும்மா ஓடும் இயந்திரமும் வேலை எரிபொருளில் சுமார் நான்கில் ஒரு பங்கு எரிக்கிறது.",
+      "hi": "निष्क्रिय इंजन भी काम के ईंधन का लगभग एक-चौथाई जलाता है।"
+     }
+    },
+    {
+     "t": 25,
+     "name": {
+      "en": "Spot the wait",
+      "ta": "காத்திருப்பைக் கண்டறி"
+     },
+     "sub": {
+      "en": "Most idling happens while waiting for trucks or instructions.",
+      "ta": "பெரும்பாலான ஐட்லிங் லாரிகள் அல்லது அறிவுறுத்தல்களுக்காகக் காத்திருக்கும்போது நடக்கிறது."
+     }
+    },
+    {
+     "t": 50,
+     "name": {
+      "en": "Auto-idle",
+      "ta": "தானியங்கி ஐட்லிங்"
+     },
+     "sub": {
+      "en": "Use auto-idle and shut down if the wait will be longer than a few minutes.",
+      "ta": "காத்திருப்பு சில நிமிடங்களுக்கு மேல் இருந்தால் தானியங்கி-ஐட்லைப் பயன்படுத்தி நிறுத்துங்கள்."
+     }
+    },
+    {
+     "t": 75,
+     "name": {
+      "en": "Plan the cycle",
+      "ta": "சுழற்சியைத் திட்டமிடு"
+     },
+     "sub": {
+      "en": "Position the next load while the truck arrives, so waiting becomes working.",
+      "ta": "லாரி வரும்போது அடுத்த சுமையைத் தயார் செய்யுங்கள் — காத்திருப்பு வேலையாக மாறும்."
+     }
+    }
+   ],
+   "quiz": {
+    "question": {
+     "en": "A truck will arrive in about 8 minutes. What is the most fuel-efficient choice?",
+     "ta": "சுமார் 8 நிமிடங்களில் லாரி வரும். மிகவும் எரிபொருள் சிக்கனமான தேர்வு எது?"
+    },
+    "options": [
+     {
+      "id": "A",
+      "text": {
+       "en": "Keep the engine at working RPM",
+       "ta": "இயந்திரத்தை வேலை RPM-இல் வைத்திருங்கள்"
+      }
+     },
+     {
+      "id": "B",
+      "text": {
+       "en": "Use auto-idle and prepare the next load position",
+       "ta": "தானியங்கி-ஐட்லைப் பயன்படுத்தி அடுத்த சுமை நிலையைத் தயார் செய்யுங்கள்"
+      }
+     },
+     {
+      "id": "C",
+      "text": {
+       "en": "Travel to the truck early",
+       "ta": "லாரியை நோக்கி முன்கூட்டியே செல்லுங்கள்"
+      }
+     },
+     {
+      "id": "D",
+      "text": {
+       "en": "Rev the engine to keep it warm",
+       "ta": "இயந்திரத்தை சூடாக வைக்க RPM ஏற்றுங்கள்"
+      }
+     }
+    ],
+    "correct": "B",
+    "feedback_wrong": {
+     "en": "Idling at working RPM burns fuel with no output. Auto-idle plus preparing the next dig position turns waiting into productive time."
+    }
+   },
+   "languages": [
+    "en",
+    "ta",
+    "hi",
+    "te"
+   ]
+  },
+  {
+   "id": "slope",
+   "title_key": "mod.slope",
+   "title": {
+    "en": "Safe Slope Operation",
+    "ta": "பாதுகாப்பான சரிவு இயக்கம்",
+    "hi": "सुरक्षित ढलान संचालन",
+    "te": "సురక్షిత వాలు నిర్వహణ"
+   },
+   "category": "Machine Operation",
+   "kind": "video",
+   "duration_s": 110,
+   "difficulty": "Advanced",
+   "skills": [
+    "Control"
+   ],
+   "description": "Stability on grades: load, bucket height, travel direction and ground condition.",
+   "animation": "slope",
+   "media": "microlearning:slope (plan view with grade overlay, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "high_risk_slope_sessions_30d",
+     "op": ">=",
+     "value": 2
+    }
+   ],
+   "reason_templates": {
+    "high_risk_slope_sessions_30d": "{high_risk_slope_sessions_30d} high-risk sessions on slopes > 10° in 30 days"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "interactive question",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Why slopes tip",
+      "ta": "சரிவுகள் ஏன் கவிழ்கின்றன"
+     },
+     "sub": {
+      "en": "On a slope, a raised or heavy bucket moves the centre of gravity downhill.",
+      "ta": "சரிவில், உயர்த்திய அல்லது கனமான வாளி ஈர்ப்பு மையத்தை கீழ்நோக்கி நகர்த்துகிறது."
+     }
+    },
+    {
+     "t": 30,
+     "name": {
+      "en": "Travel straight",
+      "ta": "நேராகச் செல்"
+     },
+     "sub": {
+      "en": "Travel straight up or down — avoid crossing a slope sideways.",
+      "ta": "நேராக மேலே அல்லது கீழே செல்லுங்கள் — சரிவைப் பக்கவாட்டில் கடக்க வேண்டாம்."
+     }
+    },
+    {
+     "t": 60,
+     "name": {
+      "en": "Keep it low",
+      "ta": "தாழ்வாக வை"
+     },
+     "sub": {
+      "en": "Keep the bucket low and the load reduced on grades.",
+      "ta": "சரிவுகளில் வாளியைத் தாழ்வாகவும் சுமையைக் குறைவாகவும் வைத்திருங்கள்."
+     }
+    },
+    {
+     "t": 85,
+     "name": {
+      "en": "Ground check",
+      "ta": "நிலச் சோதனை"
+     },
+     "sub": {
+      "en": "Wet or loose ground reduces grip — slow down before the slope, not on it.",
+      "ta": "ஈரமான அல்லது தளர்வான நிலம் பிடிப்பைக் குறைக்கும் — சரிவுக்கு முன்பே மெதுவாகுங்கள்."
+     }
+    }
+   ],
+   "quiz": {
+    "question": {
+     "en": "You must cross a 14° grade with a full bucket. What is safest?",
+     "ta": "முழு வாளியுடன் 14° சரிவைக் கடக்க வேண்டும். எது பாதுகாப்பானது?"
+    },
+    "options": [
+     {
+      "id": "A",
+      "text": {
+       "en": "Cross sideways quickly",
+       "ta": "விரைவாக பக்கவாட்டில் கடக்கவும்"
+      }
+     },
+     {
+      "id": "B",
+      "text": {
+       "en": "Raise the bucket for clearance",
+       "ta": "இடைவெளிக்காக வாளியை உயர்த்தவும்"
+      }
+     },
+     {
+      "id": "C",
+      "text": {
+       "en": "Reduce the load, keep the bucket low, travel straight",
+       "ta": "சுமையைக் குறைத்து, வாளியைத் தாழ்வாக வைத்து, நேராகச் செல்லவும்"
+      }
+     },
+     {
+      "id": "D",
+      "text": {
+       "en": "Keep speed up to avoid sliding",
+       "ta": "சறுக்காமல் இருக்க வேகத்தை வைத்திருக்கவும்"
+      }
+     }
+    ],
+    "correct": "C",
+    "feedback_wrong": {
+     "en": "Sideways travel, a raised bucket and speed all move the machine closer to its tipping point. Reduce the load, keep it low and travel straight."
+    }
+   },
+   "languages": [
+    "en",
+    "ta",
+    "hi",
+    "te"
+   ]
+  },
+  {
+   "id": "lockout",
+   "title": {
+    "en": "Lockout / Tagout Basics"
+   },
+   "category": "Safety",
+   "kind": "video",
+   "duration_s": 185,
+   "difficulty": "Beginner",
+   "skills": [
+    "Procedure"
+   ],
+   "description": "Isolate energy sources before maintenance so the machine cannot start unexpectedly.",
+   "animation": "generic",
+   "media": "microlearning:lockout (generic animation, subtitles)",
+   "trigger_conditions": [],
+   "reason_templates": {},
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Isolate energy sources before maintenance so the machine cannot start unexpectedly."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "rollover",
+   "title": {
+    "en": "Rollover Emergency Response"
+   },
+   "category": "Emergency",
+   "kind": "sim",
+   "duration_s": 320,
+   "difficulty": "Advanced",
+   "skills": [
+    "Emergency"
+   ],
+   "description": "What to do — and not do — if the machine starts to tip: stay belted, hold on, lean away.",
+   "animation": "generic",
+   "media": "microlearning:rollover (generic animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "seatbelt_unfastened_30d",
+     "op": ">=",
+     "value": 2
+    }
+   ],
+   "reason_templates": {
+    "seatbelt_unfastened_30d": "seatbelt unfastened in {seatbelt_unfastened_30d} sessions in 30 days"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "What to do — and not do — if the machine starts to tip: stay belted, hold on, lean away."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "fire",
+   "title": {
+    "en": "Engine Fire Evacuation"
+   },
+   "category": "Emergency",
+   "kind": "video",
+   "duration_s": 135,
+   "difficulty": "Beginner",
+   "skills": [
+    "Emergency"
+   ],
+   "description": "Shut down, activate suppression, evacuate upwind.",
+   "animation": "generic",
+   "media": "microlearning:fire (generic animation, subtitles)",
+   "trigger_conditions": [],
+   "reason_templates": {},
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Shut down, activate suppression, evacuate upwind."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "trench",
+   "title": {
+    "en": "Trenching Near Utilities"
+   },
+   "category": "Machine Operation",
+   "kind": "sim",
+   "duration_s": 460,
+   "difficulty": "Intermediate",
+   "skills": [
+    "Precision"
+   ],
+   "description": "Locate markers, dig by hand near services, keep spoil back from the edge.",
+   "animation": "generic",
+   "media": "microlearning:trench (generic animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "high_risk_trench_sessions_30d",
+     "op": ">=",
+     "value": 1
+    }
+   ],
+   "reason_templates": {
+    "high_risk_trench_sessions_30d": "{high_risk_trench_sessions_30d} high-risk trenching session(s) in 30 days"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Locate markers, dig by hand near services, keep spoil back from the edge."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "eco",
+   "title": {
+    "en": "Eco-Mode & Throttle Discipline"
+   },
+   "category": "Efficiency",
+   "kind": "video",
+   "duration_s": 170,
+   "difficulty": "Beginner",
+   "skills": [
+    "Efficiency"
+   ],
+   "description": "Match engine mode to the job; Power mode only when the load needs it.",
+   "animation": "generic",
+   "media": "microlearning:eco (generic animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "fuel_score",
+     "op": "<",
+     "value": 35
+    },
+    {
+     "metric": "anomaly_reason",
+     "op": "==",
+     "value": "Abnormal_Fuel"
+    }
+   ],
+   "reason_templates": {
+    "fuel_score": "fuel score {fuel_score} (bottom 35 % of recorded sessions)",
+    "anomaly_reason": "fuel burn above your baseline this shift"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Match engine mode to the job; Power mode only when the load needs it."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "cycle",
+   "title": {
+    "en": "Efficient Dig-Swing-Dump Cycles"
+   },
+   "category": "Efficiency",
+   "kind": "video",
+   "duration_s": 245,
+   "difficulty": "Intermediate",
+   "skills": [
+    "Efficiency"
+   ],
+   "description": "Shorter swing angles and bucket fill habits that cut cycle time.",
+   "animation": "generic",
+   "media": "microlearning:cycle (generic animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "efficiency_score",
+     "op": "<",
+     "value": 35
+    }
+   ],
+   "reason_templates": {
+    "efficiency_score": "efficiency score {efficiency_score} (bottom 35 % of recorded sessions)"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Shorter swing angles and bucket fill habits that cut cycle time."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "refuel",
+   "title": {
+    "en": "Refuelling Without Spills"
+   },
+   "category": "Fuel Management",
+   "kind": "video",
+   "duration_s": 115,
+   "difficulty": "Beginner",
+   "skills": [
+    "Procedure"
+   ],
+   "description": "Safe refuelling position, grounding and spill response.",
+   "animation": "generic",
+   "media": "microlearning:refuel (generic animation, subtitles)",
+   "trigger_conditions": [],
+   "reason_templates": {},
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Safe refuelling position, grounding and spill response."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  },
+  {
+   "id": "harsh",
+   "title": {
+    "en": "Smooth Controls, Fewer Shocks"
+   },
+   "category": "Machine Operation",
+   "kind": "video",
+   "duration_s": 150,
+   "difficulty": "Intermediate",
+   "skills": [
+    "Control"
+   ],
+   "description": "Feathering joystick inputs reduces harsh stops, wear and load spill.",
+   "animation": "generic",
+   "media": "microlearning:harsh (generic animation, subtitles)",
+   "trigger_conditions": [
+    {
+     "metric": "control_score",
+     "op": "<",
+     "value": 35
+    },
+    {
+     "metric": "anomaly_reason",
+     "op": "in",
+     "value": [
+      "Erratic_Control",
+      "Repeated_Harsh_Events",
+      "Unusual_Speed"
+     ]
+    }
+   ],
+   "reason_templates": {
+    "control_score": "control score {control_score} (bottom 35 % of recorded sessions)",
+    "anomaly_reason": "control behaviour outside your baseline this shift"
+   },
+   "structure": [
+    "problem",
+    "visual demonstration",
+    "correct procedure",
+    "recap"
+   ],
+   "chapters": [
+    {
+     "t": 0,
+     "name": {
+      "en": "Overview"
+     },
+     "sub": {
+      "en": "Feathering joystick inputs reduces harsh stops, wear and load spill."
+     }
+    }
+   ],
+   "quiz": null,
+   "languages": [
+    "en"
+   ]
+  }
+ ]
+}

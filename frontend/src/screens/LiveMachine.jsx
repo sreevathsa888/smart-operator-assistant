@@ -3,34 +3,42 @@ import { Cpu, Thermometer, Fuel, Weight, Gauge, Timer, Droplets, Activity } from
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { Panel, PanelHeader, StatusPill, Sparkline, AnimatedNumber, ScreenTitle, cx } from '../components/ui/index.jsx';
 import MachinePlan from '../components/MachinePlan.jsx';
+import { api } from '../api/client.js';
+import { useApi } from '../hooks/useApi.js';
+import { ApiState } from '../components/ApiState.jsx';
 
-export default function LiveMachine({ telemetry: tm, live }) {
+export default function LiveMachine({ telemetry: tm, live, operatorId, machineId, dataVersion }) {
   const [view, setView] = useState('side');
+  const twin = useApi(() => api.twin(operatorId), [operatorId, dataVersion]);
+  if (!live.ready || !tm) return <ApiState loading error={live.error} onRetry={live.retry} rows={3} label="Connecting to machine" />;
+  const band = twin.data?.baselineBands.find((b) => b.key === 'idle_per_2h');
   const tiles = [
     { k: 'Engine hours', v: tm.engineHours, d: 1, u: 'h', icon: Timer, hist: null },
-    { k: 'Hydraulic temp', v: tm.hydraulicTemp, d: 1, u: '°C', icon: Droplets, hist: tm.hist.hydraulicTemp, warn: tm.hydraulicTemp > 85 },
-    { k: 'Engine temp', v: tm.engineTemp, d: 1, u: '°C', icon: Thermometer, hist: tm.hist.engineTemp, warn: tm.engineTemp > 95 },
-    { k: 'Fuel', v: tm.fuel, d: 0, u: '%', icon: Fuel, bar: tm.fuel },
+    { k: 'Hydraulic temp', v: tm.hydraulicTemp, d: 1, u: '°C', icon: Droplets, hist: tm.hist.hydraulicTemp, warn: tm.hydraulicTemp > 90 },
+    { k: 'Engine temp', v: tm.engineTemp, d: 1, u: '°C', icon: Thermometer, hist: tm.hist.engineTemp, warn: tm.engineTemp > 100 },
+    { k: 'Fuel', v: tm.fuel, d: 0, u: '%', icon: Fuel, bar: tm.fuel, note: `20% at ~${tm.fuelProjection.at} (current burn)` },
     { k: 'Load', v: tm.load, d: 0, u: '%', icon: Weight, hist: tm.hist.load },
     { k: 'Speed', v: tm.speed, d: 1, u: 'km/h', icon: Gauge },
-    { k: 'Idle', v: tm.idleMin, d: 0, u: 'min', icon: Activity, note: 'baseline 18–25 min / shift' },
+    { k: 'Idle (shift)', v: tm.idleMin, d: 0, u: 'min', icon: Activity, note: band ? `your typical ${band.min}–${band.max} min per 2 h · now ${band.current}` : 'loading baseline…', warn: band?.outside },
     { k: 'Engine speed', v: tm.rpm, d: 0, u: 'rpm', icon: Cpu },
   ];
+  const n = tm.hist.engineTemp.length;
   const chartData = tm.hist.engineTemp.map((_, i) => ({
-    t: i - 59, engine: tm.hist.engineTemp[i], hyd: tm.hist.hydraulicTemp[i], fuel: tm.hist.fuelRate[i], load: tm.hist.load[i],
+    t: i - (n - 1), engine: tm.hist.engineTemp[i], hyd: tm.hist.hydraulicTemp[i], fuel: tm.hist.fuelRate[i], load: tm.hist.load[i],
   }));
+  const pad = (lo, hi) => [(m) => Math.floor(Math.min(m, lo) - 1), (m) => Math.ceil(Math.max(m, hi) + 1)];
 
   return (
     <div>
-      <ScreenTitle eyebrow="EXC-204 · streaming 1 Hz" title="Live machine"
+      <ScreenTitle eyebrow={`${machineId} · synthetic telemetry · polled every 0.5 s`} title="Live machine"
         right={<div className="flex gap-2">
           {['side', 'plan'].map((v) => <button key={v} className={cx('chip', view === v && 'chip-on')} onClick={() => setView(v)}>{v === 'side' ? 'Side view' : 'Plan view'}</button>)}
         </div>} />
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
         <Panel className="xl:col-span-7 !p-0 overflow-hidden">
-          <div className="p-5 pb-0"><PanelHeader title="Machine state" right={<StatusPill level="safe">All systems normal</StatusPill>} /></div>
+          <div className="p-5 pb-0"><PanelHeader title="Machine state" right={<StatusPill level={tm.status === 'normal' ? 'safe' : 'caution'}>{tm.status === 'normal' ? 'All systems normal' : 'Check temperatures / health'}</StatusPill>} /></div>
           <div className="tech-grid relative aspect-[16/11] max-w-full">
-            {view === 'side' ? <SideView tm={tm} /> : <MachinePlan worker={live.state.worker} distance={live.state.distance} level={live.risk.level} speed={live.state.speed} load={live.state.load} className="absolute inset-0 h-full" />}
+            {view === 'side' ? <SideView tm={tm} /> : <MachinePlan worker={live.state.worker} distance={live.state.distance} level={live.risk.level} speed={live.state.speed} load={live.state.load} label={machineId} className="absolute inset-0 h-full" />}
           </div>
         </Panel>
         <div className="xl:col-span-5 grid grid-cols-2 gap-3 content-start">
@@ -48,12 +56,12 @@ export default function LiveMachine({ telemetry: tm, live }) {
         </div>
 
         <Panel className="xl:col-span-12">
-          <PanelHeader title="Real-time telemetry · last 60 s" />
+          <PanelHeader title="Real-time telemetry · last 60 samples" />
           <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
-            <MiniChart data={chartData} k="engine" name="Engine temp" unit="°C" domain={[76, 90]} warn={95} />
-            <MiniChart data={chartData} k="hyd" name="Hydraulic temp" unit="°C" domain={[70, 84]} />
-            <MiniChart data={chartData} k="fuel" name="Fuel consumption" unit="L/h" domain={[10, 18]} />
-            <MiniChart data={chartData} k="load" name="Load" unit="%" domain={[50, 90]} />
+            <MiniChart data={chartData} k="engine" name="Engine temp" unit="°C" domain={pad(76, 90)} />
+            <MiniChart data={chartData} k="hyd" name="Hydraulic temp" unit="°C" domain={pad(55, 75)} />
+            <MiniChart data={chartData} k="fuel" name="Fuel consumption" unit="L/h" domain={pad(10, 18)} />
+            <MiniChart data={chartData} k="load" name="Load" unit="%" domain={pad(50, 90)} />
           </div>
         </Panel>
       </div>
@@ -70,7 +78,7 @@ function MiniChart({ data, k, name, unit, domain }) {
         <ResponsiveContainer>
           <LineChart data={data} margin={{ top: 6, right: 6, bottom: 0, left: -18 }}>
             <CartesianGrid stroke="#2a3139" vertical={false} />
-            <XAxis dataKey="t" tick={{ fill: '#838e99', fontSize: 10, fontFamily: '"JetBrains Mono", ui-monospace, monospace' }} tickLine={false} axisLine={false} interval={19} tickFormatter={(v) => `${v}s`} />
+            <XAxis dataKey="t" tick={{ fill: '#838e99', fontSize: 10, fontFamily: '"JetBrains Mono", ui-monospace, monospace' }} tickLine={false} axisLine={false} interval={19} tickFormatter={(v) => `${v}`} />
             <YAxis domain={domain} tick={{ fill: '#838e99', fontSize: 10, fontFamily: '"JetBrains Mono", ui-monospace, monospace' }} tickLine={false} axisLine={false} width={44} />
             <Tooltip contentStyle={{ background: '#101317', border: '1px solid #2a3139', borderRadius: 8, fontFamily: '"JetBrains Mono", ui-monospace, monospace', fontSize: 12 }} labelStyle={{ color: '#838e99' }} />
             <Line type="monotone" dataKey={k} stroke="#e9edf0" strokeWidth={1.75} dot={false} isAnimationActive={false} />
@@ -124,7 +132,7 @@ function SideView({ tm }) {
       <Callout x={250} y={300} lx={120} ly={120} label="ENGINE" value={`${tm.engineTemp.toFixed(1)} °C`} ok />
       <Callout x={330} y={365} lx={70} ly={505} label="HYDRAULICS" value={`${tm.hydraulicTemp.toFixed(1)} °C`} ok />
       <Callout x={410} y={210} lx={560} ly={80} label="CAB · OP1007" value="Seatbelt fastened" ok />
-      <Callout x={540} y={260} lx={640} ly={505} label="LOAD" value={`${tm.load}% · ${(tm.load * 0.018).toFixed(2)} t`} ok />
+      <Callout x={540} y={260} lx={640} ly={505} label="LOAD" value={`${tm.load}% of rated payload`} ok />
     </svg>
   );
 }

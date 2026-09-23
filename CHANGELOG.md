@@ -62,3 +62,45 @@ None in the UI. The uploaded app was moved unchanged to `frontend/` (verified wi
 - Safety model is weakest on STEEP_TERRAIN (accuracy 0.62) and MACHINE_OVERHEATING (0.69).
 - The UI demo event uses an excavator at 6.8 km/h (outside training range) → flagged by the model; fix in Phase 11.
 - 19 % of LOW sessions are raised to MEDIUM+ (the cost of the high-recall alert policy).
+
+## 2026-09-23 — Phase 8–18: backend, UI integration, live safety loop, docs
+
+**Files added**
+`backend/{__init__,config,main,schemas}.py`, `backend/database/__init__.py`, `backend/routes/api.py`,
+`backend/services/{telemetry,twin,tasks,training,replay,simulation,analytics}.py`, `training_content/training_modules.json`,
+`frontend/src/{api/client.js, hooks/useApi.js, components/ApiState.jsx, screens/Login.jsx}`,
+`tests/{test_api,test_e2e}.py`, `docs/{architecture,api,ui_integration}.md`.
+
+**Files changed**
+All screens, `App.jsx`, `Shell.jsx`, `InterventionAlert.jsx`, `ui/index.jsx` (HIGH pill → elevated orange), `lib/risk.js`
+(presentation only), `lib/i18n.jsx` (CRITICAL level, per-factor alerts/recommendations, login; Tamil complete),
+`hooks/useLiveScenario.js` (polls the backend), `hooks/useTelemetry.js`, `vite.config.js` (/api proxy),
+`README.md`, `requirements.txt`, `.env.example`, `.gitignore`.
+
+**Files removed**
+`frontend/src/data/mock.js` and the browser risk formula `computeRisk()`.
+
+**Features**
+- FastAPI + SQLite backend (24 endpoints), DB auto-built on first start; ground-truth labels are not loaded.
+- Live loop: scripted sensor feed, model-scored 0.5 s frames, 5 s forecast, model-driven alert rule, take action / dismiss, automatic event recording.
+- Safety Replay from recorded frames with derived markers and findings; What-if and 3D simulator scored by the model.
+- Digital Twin (project-defined scores, personal baseline bands, trend, insights), adaptive training with traceable reasons.
+- Loading / error / empty states; login; Online/Offline indicator; model reasons localised to Tamil.
+
+**Tests performed**
+- `pytest` → 37 passed (dataset 13, models 11, API 12, end-to-end story 1).
+- Real-time live event run: forecast HIGH at 3.0 s while current LOW; alert at 4.7 s; after action MEDIUM → LOW; event recorded and replayable.
+- Headless Chromium against uvicorn + `vite preview`: all 10 screens render without page errors; demo event → alert → take action → replay; what-if; quiz; Tamil.
+- `npm run build` succeeds.
+
+**Issues found and fixed**
+- Training rule `0.8·old + 0.2·assessment` lowered the score of strong operators who passed → replaced with `old + 0.2·(100 − old)·quality`; wrong answers no longer change the score.
+- Recommendation thresholds assumed absolute scores; twin scores are percentiles → thresholds moved to the bottom 35–40 %.
+- Replay dropped the ALERT marker when it coincided with another event → markers merge.
+- What-if rounded the recorded values → recorded side now exact.
+- Alert copy said "entered the restricted zone" at 3.3 m → wording depends on distance.
+- Duplicate anomaly in Analytics; simulator default speed outside the training range; worker walk-away path.
+
+**Known issues**
+- Hindi/Telugu partial. Google Fonts need internet (system fallbacks otherwise).
+- `npm run build:single` produces a UI-only file; it needs a reachable backend to show data.

@@ -1,32 +1,51 @@
-// Thin data layer. Today every call resolves mock data; set VITE_USE_MOCK=false and
-// VITE_API_URL=http://localhost:8000 to hit the FastAPI backend with the same shapes.
-import * as mock from '../data/mock.js';
-import { computeRisk } from '../lib/risk.js';
+// The single data layer. Every number the UI shows comes from the FastAPI backend (models + database).
+// In development Vite proxies /api → http://localhost:8000. Set VITE_API_BASE to call another host directly.
+const BASE = import.meta.env?.VITE_API_BASE || '';
 
-const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:8000';
-const USE_MOCK = (import.meta.env?.VITE_USE_MOCK ?? 'true') !== 'false';
+export class ApiError extends Error {
+  constructor(message, status) { super(message); this.status = status; }
+}
 
-async function get(path, fallback) {
-  if (USE_MOCK) return structuredClone(fallback);
-  const r = await fetch(`${BASE}${path}`);
-  if (!r.ok) throw new Error(`${path} → ${r.status}`);
+async function request(method, path, body) {
+  let r;
+  try {
+    r = await fetch(`${BASE}${path}`, {
+      method, headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError('Cannot reach the backend. Start it with: uvicorn backend.main:app --port 8000', 0);
+  }
+  if (!r.ok) {
+    let detail = `${r.status}`;
+    try { detail = (await r.json()).detail ?? detail; } catch { /* not json */ }
+    throw new ApiError(typeof detail === 'string' ? detail : JSON.stringify(detail), r.status);
+  }
   return r.json();
 }
-async function post(path, body, fallback) {
-  if (USE_MOCK) return fallback(body);
-  const r = await fetch(`${BASE}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  if (!r.ok) throw new Error(`${path} → ${r.status}`);
-  return r.json();
-}
+const get = (p) => request('GET', p);
+const post = (p, b) => request('POST', p, b ?? {});
 
 export const api = {
-  operator: () => get('/operators/OP1007', mock.operator),
-  machine: () => get('/machines/EXC-204', mock.machine),
-  tasks: () => get('/tasks/today?operator=OP1007', mock.tasks),
-  twin: () => get('/operators/OP1007/twin', mock.twin),
-  training: () => get('/training/modules?operator=OP1007', mock.trainingModules),
-  replay: (id = 'EVT-0917-1432') => get(`/events/${id}/replay`, mock.replayEvent),
-  analytics: () => get('/analytics/summary?range=30d', mock.analytics),
-  /** POST /risk/predict { speed, distance, load, slope, visibility } → { score, level, contributions } */
-  predictRisk: (state) => post('/risk/predict', state, computeRisk),
+  health: () => get('/api/health'),
+  meta: () => get('/api/meta'),
+  operators: () => get('/api/operators'),
+  operator: (id) => get(`/api/operator/${id}`),
+  machine: (id) => get(`/api/machine/${id}`),
+  dashboard: (op) => get(`/api/dashboard/${op}`),
+  twin: (op) => get(`/api/twin/${op}`),
+  tasks: (op) => get(`/api/tasks/${op}`),
+  startTask: (id) => post(`/api/tasks/${id}/start`),
+  completeTask: (id) => post(`/api/tasks/${id}/complete`),
+  telemetry: (machine, op, history = false) => get(`/api/telemetry/${machine}?operator_id=${op}${history ? '&history=true' : ''}`),
+  telemetryEvent: (machine, action, op) => post(`/api/telemetry/${machine}/event`, { action, operator_id: op }),
+  predictSafety: (inputs, op) => post('/api/predict/safety', { inputs, operator_id: op }),
+  /** batch or single scenario through the trained safety model */
+  simulateRisk: (scenarios, op, explain = false) => post('/api/simulation/risk', Array.isArray(scenarios) ? { scenarios, operator_id: op, explain } : { scenario: scenarios, operator_id: op, explain }),
+  decision: (state, choice, op) => post('/api/simulation/decision', { state, choice, operator_id: op }),
+  anomaly: (op) => post('/api/anomaly/operator', { operator_id: op }),
+  events: (op, limit = 20) => get(`/api/safety/events?operator_id=${op}&limit=${limit}`),
+  replay: (id) => get(`/api/safety/replay/${id}`),
+  training: (op) => get(`/api/training/recommendations/${op}`),
+  completeTraining: (op, moduleId, correct, answer) => post('/api/training/complete', { operator_id: op, module_id: moduleId, correct, answer }),
+  analytics: (op) => get(`/api/analytics/${op}`),
 };

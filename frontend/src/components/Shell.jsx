@@ -22,7 +22,7 @@ export const ROUTES = [
   { id: 'analytics', key: 'nav.analytics', icon: BarChart3 },
 ];
 
-export function Sidebar({ route, onNav, riskLevel }) {
+export function Sidebar({ route, onNav, riskLevel, operatorId = 'OP1007', onLogout }) {
   const { t } = useI18n();
   return (
     <nav aria-label="Primary" className="hidden md:flex flex-col shrink-0 w-[88px] xl:w-[232px] bg-bg1 border-r border-line h-full">
@@ -54,11 +54,12 @@ export function Sidebar({ route, onNav, riskLevel }) {
         })}
       </ul>
       <div className="border-t border-line p-3 xl:p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-md bg-bg3 border border-line flex items-center justify-center font-display font-semibold text-sm shrink-0">07</div>
+        <div className="w-10 h-10 rounded-md bg-bg3 border border-line flex items-center justify-center font-display font-semibold text-sm shrink-0">{operatorId.slice(-2)}</div>
         <div className="hidden xl:block leading-tight">
-          <div className="num text-sm">OP1007</div>
+          <div className="num text-sm">{operatorId}</div>
           <div className="text-xs text-ink3">{t('op.role')}</div>
           <div className="text-xs text-safe flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 rounded-full bg-safe" />{t('op.onduty')}</div>
+          {onLogout && <button onClick={onLogout} className="text-xs text-ink3 hover:text-ink underline underline-offset-2 mt-1">{t('shell.endshift')}</button>}
         </div>
       </div>
     </nav>
@@ -87,7 +88,7 @@ export function MobileNav({ route, onNav }) {
   );
 }
 
-export function Header({ route, onDemo, phase }) {
+export function Header({ route, onDemo, phase, machineId = 'EXC-204', connected = true }) {
   const { t, lang, setLang } = useI18n();
   const now = useClock();
   const [open, setOpen] = useState(false);
@@ -96,12 +97,12 @@ export function Header({ route, onDemo, phase }) {
     <header className="h-16 shrink-0 flex items-center gap-3 px-4 lg:px-6 border-b border-line bg-bg1/80 backdrop-blur sticky top-0 z-20">
       <div className="md:hidden"><Logo /></div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] tracking-[0.16em] font-semibold text-ink3 truncate">EXC-204 · EXCAVATOR · RIVERSIDE INTERCHANGE</div>
+        <div className="text-[10px] tracking-[0.16em] font-semibold text-ink3 truncate">{machineId} · {machineId.startsWith('EXC') ? 'EXCAVATOR' : 'WHEEL LOADER'} · RIVERSIDE INTERCHANGE</div>
         <div className="font-display text-lg font-semibold tracking-[0.06em] uppercase truncate">{t(r.key)}</div>
       </div>
       <div className="hidden lg:flex items-center gap-2 text-sm">
         <span className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-bg2 border border-line">
-          <span className="w-2 h-2 rounded-full bg-safe" /> <span className="font-semibold tracking-wider text-xs uppercase">{t('hdr.online')}</span>
+          <span className={cx('w-2 h-2 rounded-full', connected ? 'bg-safe' : 'bg-critical')} /> <span className="font-semibold tracking-wider text-xs uppercase">{connected ? t('hdr.online') : 'Offline'}</span>
         </span>
         <span className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-bg2 border border-line">
           <Clock size={14} className="text-ink3" />
@@ -126,8 +127,8 @@ export function Header({ route, onDemo, phase }) {
           </ul>
         )}
       </div>
-      <button className="btn h-10 px-3 border-caution/70 text-caution hover:bg-caution/10" onClick={onDemo} disabled={phase === 'approach' || phase === 'alert'}
-        title="Simulate a worker entering the restricted zone">
+      <button className="btn h-10 px-3 border-caution/70 text-caution hover:bg-caution/10" onClick={onDemo} disabled={phase !== 'normal'}
+        title="Start the scripted sensor feed: a worker approaches the rear-left blind zone">
         <Zap size={16} /> <span className="hidden sm:inline">{t('hdr.demo')}</span>
       </button>
     </header>

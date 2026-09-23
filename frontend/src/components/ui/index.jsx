@@ -29,7 +29,7 @@ const PILL = {
   safe: 'bg-safe/10 text-safe', low: 'bg-safe/10 text-safe',
   caution: 'bg-caution/15 text-caution', medium: 'bg-caution/15 text-caution',
   elevated: 'bg-elevated/15 text-elevated',
-  critical: 'bg-critical/15 text-critical', high: 'bg-critical/15 text-critical',
+  critical: 'bg-critical/15 text-critical', high: 'bg-elevated/15 text-elevated',
   assist: 'bg-assist/15 text-assist', neutral: 'bg-bg3 text-ink2',
 };
 export function StatusPill({ level = 'neutral', children, pulse }) {

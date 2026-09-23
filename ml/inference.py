@@ -116,6 +116,13 @@ class SafetyPredictor:
             out.append(r)
         return out[0] if single else out
 
+    def score_frame(self, df: pd.DataFrame) -> np.ndarray:
+        """Score dataset-shaped rows (e.g. historical sessions) in one call."""
+        return np.round(self._score(self.model.predict_proba(F.safety_frame(df))[:, self._order]), 1)
+
+    def level_of(self, scores):
+        return self._level(np.asarray(scores, float))
+
     def score_batch(self, inputs, context=None):
         """Fast path for curves / sliders: scores only, no explanation."""
         rows = [self._complete(i, context)[0] for i in inputs]
@@ -153,7 +160,9 @@ class SafetyPredictor:
             contrib = []
             for i, g in enumerate(names):
                 col, unit = F.GROUP_HEADLINE[g]
+                alone = float(v[b, 1 << i] - base)             # this factor alone, others at the safe reference
                 contrib.append(dict(key=g, points=round(float(phi[i]), 2), pct=int(round(100 * max(phi[i], 0) / pos)),
+                                    isolated=round(max(0.0, 100 * alone / max(1e-6, 100 - base)), 1),
                                     direction="raises" if phi[i] > 0.25 else "lowers" if phi[i] < -0.25 else "neutral",
                                     value=_fmt(raw.iloc[b][col]), reference=_fmt(self.ref[col]), unit=unit))
             contrib.sort(key=lambda c: -c["points"])
