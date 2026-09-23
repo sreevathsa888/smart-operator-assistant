@@ -1,0 +1,150 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "check": "row_count",
+      "status": "PASS",
+      "detail": "40,000 rows (expected 40,000)"
+    },
+    {
+      "check": "column_count",
+      "status": "PASS",
+      "detail": "68 columns (dictionary 68)"
+    },
+    {
+      "check": "dictionary_sync",
+      "status": "PASS",
+      "detail": "every column documented"
+    },
+    {
+      "check": "missing_values",
+      "status": "PASS",
+      "detail": "0 missing cells (0.0000%)"
+    },
+    {
+      "check": "duplicate_rows",
+      "status": "PASS",
+      "detail": "0 exact duplicates"
+    },
+    {
+      "check": "duplicate_rows_excluding_ids",
+      "status": "PASS",
+      "detail": "0 duplicates ignoring ids"
+    },
+    {
+      "check": "unique_ids",
+      "status": "PASS",
+      "detail": "Record_ID and Task_ID unique"
+    },
+    {
+      "check": "value_ranges",
+      "status": "PASS",
+      "detail": "all 27 range-constrained columns within bounds"
+    },
+    {
+      "check": "speed_within_machine_class",
+      "status": "PASS",
+      "detail": "0 over class cap"
+    },
+    {
+      "check": "positive_fuel",
+      "status": "PASS",
+      "detail": "fuel strictly positive"
+    },
+    {
+      "check": "completed_le_target",
+      "status": "PASS",
+      "detail": "Completed_Quantity \u2264 Target_Quantity"
+    },
+    {
+      "check": "remaining_le_actual",
+      "status": "PASS",
+      "detail": "remaining time \u2264 total duration"
+    },
+    {
+      "check": "incident_iff_event",
+      "status": "PASS",
+      "detail": "Incident_Type set exactly when Safety_Event=1"
+    },
+    {
+      "check": "reason_iff_anomaly",
+      "status": "PASS",
+      "detail": "Anomaly_Reason set exactly when anomalous"
+    },
+    {
+      "check": "zone_status_consistent",
+      "status": "PASS",
+      "detail": "Safety_Zone_Status matches distance thresholds"
+    },
+    {
+      "check": "task_machine_compatibility",
+      "status": "PASS",
+      "detail": "every task type is valid for its machine type"
+    },
+    {
+      "check": "blind_zone_only_people_vehicles",
+      "status": "PASS",
+      "detail": "0 blind-zone entries by static objects"
+    },
+    {
+      "check": "risk_level_matches_score",
+      "status": "PASS",
+      "detail": "level = binned score"
+    },
+    {
+      "check": "demo_entities_present",
+      "status": "PASS",
+      "detail": "OP1007 sessions: 328, EXC-204 sessions: 1839"
+    },
+    {
+      "check": "scenario_distribution",
+      "status": "PASS",
+      "detail": "max |realised \u2212 target| = 0.0049"
+    },
+    {
+      "check": "all_scenarios_present",
+      "status": "PASS",
+      "detail": "12 / 12 scenarios"
+    },
+    {
+      "check": "risk_class_balance",
+      "status": "PASS",
+      "detail": "{'LOW': 0.5298, 'MEDIUM': 0.266, 'HIGH': 0.1084, 'CRITICAL': 0.0958}"
+    },
+    {
+      "check": "event_rate_plausible",
+      "status": "PASS",
+      "detail": "Safety_Event rate 10.527%"
+    },
+    {
+      "check": "anomaly_rate_plausible",
+      "status": "PASS",
+      "detail": "Operator_Anomaly rate 19.625%"
+    },
+    {
+      "check": "expected_correlation_signs",
+      "status": "PASS",
+      "detail": "16/16 relationships have the expected sign"
+    },
+    {
+      "check": "no_feature_target_near_identity",
+      "status": "PASS",
+      "detail": "no RAW/DERIVED feature has |\u03c1|>0.95 with a target"
+    },
+    {
+      "check": "safety_target_learnable",
+      "status": "PASS",
+      "detail": "probe acc 0.7805 vs majority 0.5432"
+    },
+    {
+      "check": "safety_target_not_trivial",
+      "status": "PASS",
+      "detail": "probe acc 0.7805 (<0.97 \u21d2 not trivially separable)"
+    },
+    {
+      "check": "personal_baseline_beats_global",
+      "status": "PASS",
+      "detail": "{'auc_global_idle_rate': 0.8926, 'auc_personal_z': 0.9997, 'n': 35023, 'positives': 2873}"
+    }
+  ]
+}

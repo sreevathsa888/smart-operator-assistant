@@ -1,0 +1,69 @@
+Column,Group,Role,Type,Unit,Description,Leakage_Notes,Min,Max,Example
+Record_ID,Identifier,ID,string,,Unique session record id.,Never a feature.,,,R014328
+Timestamp,Identifier,ID,datetime,local,"Session start time (synthetic site calendar, 180 days from 2026-03-01).",Use only for time-based splitting / ordering.,,,2026-03-01 06:01
+Scenario,Identifier,LATENT,category,,Generator scenario that produced the session. Not observable on a real machine.,NEVER a feature for any model (would leak the generating process). Use for stratification and error analysis only.,,,POOR_WEATHER
+Machine_ID,Machine,ID,string,,"Machine identifier (EXC-2xx excavators, WHL-3xx wheel loaders).",Do not one-hot as a feature (memorisation).,,,WHL-306
+Machine_Type,Machine,RAW,category,,Excavator or Wheel Loader.,,,,Wheel Loader
+Machine_Model_Class,Machine,RAW,category,,Generic size class (e.g. Medium Excavator (20t class)). Not an official model name.,,,,Large Wheel Loader
+Engine_Hours,Machine,RAW,float,h,Cumulative engine hours at session start.,,868.9,16218.4,8532.2
+Machine_Age,Machine,RAW,float,years,Years in service.,,0.6,10.79,5.5
+Engine_Temperature,Machine,RAW,float,°C,"Coolant temperature (session average). Driven by engine load, ambient temperature, machine health; overheating scenario adds a fault offset.",,71.9,116.5,84.0
+Hydraulic_Temperature,Machine,RAW,float,°C,Hydraulic oil temperature (session average).,,45.6,106.7,67.8
+Machine_Speed,Machine,RAW,float,km/h,"Travel speed in the safety snapshot window (sensor noise σ≈0.2 km/h). Excavators ≤5.5, loaders ≤15.",,0.0,15.0,7.75
+Fuel_Consumption,Machine,RAW,float,L/h,Average fuel burn rate over the session (active burn blended with ~28 % idle burn).,TASK: session aggregate – known only after work starts.,5.39,42.52,24.61
+Machine_Health_Score,Machine,RAW,float,0–100,"Project-defined condition index (wear, maintenance quality, fault state). Not a CAT metric.",,23.5,99.2,68.3
+Engine_Load_Percentage,Machine,RAW,float,%,"Average engine load (payload, slope, mode, task).",,32.2,100.0,65.6
+Operator_ID,Operator,ID,string,,Operator identifier OP1000–OP1119 (OP1007 = demo operator).,Do not one-hot for SAFETY/TASK. ANOMALY uses it only to look up the operator's own baseline.,,,OP1062
+Experience_Level,Operator,RAW,category,,"Novice (<2 y), Intermediate (2–5), Experienced (5–10), Expert (10+).",,,,Experienced
+Years_Experience,Operator,RAW,float,years,Years operating heavy equipment.,,0.4,24.2,5.1
+Operating_Shift,Operator,RAW,category,,"Morning 06–14, Afternoon 14–22, Night 22–06.",,,,Morning
+Historical_Efficiency,Operator,RAW,float,0–100,"Operator's historical productivity index (profile, pre-window).",,55.9,97.2,76.7
+Historical_Idle_Time,Operator,RAW,float,min / 120-min session,Operator's historical typical idle (noisy estimate of personal habit).,,8.4,49.2,22.4
+Training_Score,Operator,RAW,float,0–100,Latest training assessment score; drifts upward slowly over the 180 days.,,49.0,100.0,89.6
+Previous_Safety_Events,Operator,RAW,int,count,Safety events recorded before the observation window.,,0,11,1
+Operator_Skill_Score,Operator,RAW,float,0–100,Assessed skill (noisy measurement of latent skill).,,11.0,86.2,58.1
+Load_Weight,Operation,RAW,float,t / cycle,Average payload per work cycle.,,0.83,8.31,5.57
+Load_Percentage,Operation,DERIVED,float,% of class payload,Load_Weight relative to typical class payload (>100 % = overloading).,,37.4,112.0,80.9
+Load_Cycles,Operation,SESSION_OUTCOME,int,count,Work cycles needed for the completed quantity.,TASK: LEAKAGE – realised cycle count is only known at completion.,26,1316,144
+Idle_Time,Operation,SESSION_OUTCOME,float,min,Idle minutes during the session. Idle share of session time = operator habit ÷ 120 (habit expressed as min per 2 h).,TASK: LEAKAGE – idle minutes are part of the realised duration. ANOMALY: primary input.,2.3,548.8,25.9
+Operating_Mode,Operation,RAW,category,,Eco / Standard / Power.,,,,Standard
+Travel_Direction,Operation,RAW,category,,Forward / Reverse / Swinging / Stationary in the snapshot window.,,,,Forward
+Harsh_Acceleration,Operation,SESSION_OUTCOME,int,count,Harsh acceleration events in the session.,TASK: leakage-risk (scales with duration). Use per-hour rate for ANOMALY.,0,58,1
+Harsh_Braking,Operation,SESSION_OUTCOME,int,count,Harsh braking events in the session.,Same as Harsh_Acceleration.,0,49,3
+Rapid_Control_Input,Operation,SESSION_OUTCOME,int,count,Rapid joystick reversals in the session.,Same as Harsh_Acceleration.,0,285,16
+Control_Smoothness,Operation,RAW,float,0–100,Project-defined control smoothness index (higher = smoother).,,28.1,100.0,76.4
+Proximity_Violations,Operation,SESSION_OUTCOME,int,count,Entries of any object into the 3 m restricted zone during the session.,ANOMALY input (repeated violations). Not for SAFETY snapshot scoring.,0,25,1
+Seatbelt_Status,Safety,RAW,category,,Fastened / Unfastened.,,,,Fastened
+Proximity_Distance,Safety,RAW,float,m,Distance to nearest object in the snapshot (sensor noise ≈8 %). 0.5–20 m.,,0.52,20.0,9.98
+Obstacle_Type,Safety,RAW,category,,"Nearest object: Worker, Vehicle, Structure, Material_Pile, Utility_Marker, No_Object.",,,,Worker
+Blind_Zone_Entry,Safety,RAW,int,0/1,"Object detected in a blind zone (more likely when reversing, close, low visibility).",,0,1,0
+Ground_Slope,Safety,RAW,float,°,Ground slope at the machine (sensor noise σ≈0.7°). 0–30°.,,0.0,29.7,0.5
+Safety_Zone_Status,Safety,DERIVED,category,,"From Proximity_Distance: Violated <3 m, Warning 3–6 m, Clear ≥6 m (PROJECT thresholds).",Redundant with Proximity_Distance.,,,Clear
+Emergency_Stop,Safety,SESSION_OUTCOME,int,0/1,Emergency stop triggered.,"SAFETY: LEAKAGE – consequence of risk, not a cause.",0,1,0
+Safety_Event,Safety,TARGET,int,0/1,A safety event (near miss or incident) occurred. Bernoulli draw from ground-truth risk.,SAFETY: LEAKAGE if used as input. Can be a secondary target.,0,1,0
+Weather,Environment,RAW,category,,"Clear, Cloudy, Hot, Light_Rain, Heavy_Rain, Dust_Wind, Fog (seasonal).",,,,Dust_Wind
+Visibility,Environment,RAW,float,% (index),Estimated visibility index 0–100 from weather × lighting (sensor noise σ≈4).,,1.8,100.0,52.3
+Ambient_Temperature,Environment,RAW,float,°C,"Air temperature (month, shift, weather).",,16.0,48.0,31.6
+Dust_Level,Environment,RAW,float,0–100,"Dust index (terrain, wind, rain suppresses).",,0.0,100.0,68.3
+Ground_Condition,Environment,RAW,category,,"Dry, Wet, Muddy, Loose, Rocky (driven by weather + terrain).",,,,Dry
+Terrain_Type,Environment,RAW,category,,"Flat, Gentle_Slope, Embankment, Trench_Edge, Haul_Road, Stockpile.",,,,Flat
+Working_Zone,Environment,RAW,category,,Zone A–F; zones differ in terrain and ground-worker density.,,,,Zone B
+Lighting_Condition,Environment,RAW,category,,"Daylight, Dawn_Dusk, Night_Floodlit, Night_Poor.",,,,Daylight
+Task_ID,Task,ID,string,,Task identifier.,Never a feature.,,,TSK-014328
+Task_Type,Task,RAW,category,,"Excavation, Trenching, Loading, Backfilling (excavator); Loading, Material_Transfer, Stockpiling (loader).",,,,Loading
+Task_Complexity,Task,RAW,int,1–5,Planner-assigned complexity.,,1,5,3
+Target_Quantity,Task,RAW,float,t,Planned quantity to move.,,120.1,1852.5,800.2
+Completed_Quantity,Task,SESSION_OUTCOME,float,t,Quantity actually moved (<target if interrupted).,TASK: LEAKAGE.,61.8,1852.5,800.2
+Historical_Task_Duration,Task,RAW,float,min,"This operator's historical duration for comparable tasks, scaled to the target quantity.",Known before the task – legitimate TASK feature.,31.7,699.6,156.9
+Current_Task_Progress,Task,RAW,float,0–1,Quantity-based progress at the snapshot.,Legitimate TASK feature for remaining-time prediction.,0.05,0.95,0.191
+Estimated_Task_Duration,Task,RAW,float,min,Planner's standard estimate (quantity ÷ standard rate + 20 % allowance). No operator or condition info.,Known before the task – legitimate TASK baseline.,31.3,475.7,127.4
+Actual_Task_Duration,Task,SESSION_OUTCOME,float,min,Realised total duration (productive + idle + stoppages).,TASK: LEAKAGE – this is (almost) the target. Can serve as target for a total-duration model.,27.1,971.1,161.1
+Total_Fuel_Used,Task,SESSION_OUTCOME,float,L,Fuel_Consumption × duration.,TASK: LEAKAGE.,7.5,263.3,61.8
+Safety_Risk_Score,Target,TARGET,float,0–100,"Synthetic ground-truth risk index = 100·sigmoid(logit) built from TRUE conditions + unobserved operator awareness + situational noise. PROJECT metric, not a CAT metric.",SAFETY: LEAKAGE for the level classifier (level is binned from it).,2.0,100.0,28.7
+Safety_Risk_Level,Target,TARGET,category,,"LOW <30, MEDIUM 30–55, HIGH 55–75, CRITICAL ≥75 on Safety_Risk_Score (PROJECT thresholds).",Primary SAFETY target.,,,LOW
+Operator_Anomaly,Target,TARGET,int,0/1,Session behaviour deviates ≥3 personal SDs from the operator's own latent baseline on any behaviour dimension.,ANOMALY evaluation label (the detector itself is unsupervised).,0,1,0
+Anomaly_Score,Target,TARGET,float,0–1,sigmoid(1.2·(max personal z − 3)).,ANOMALY: LEAKAGE if used as input.,0.0062,1.0,0.0327
+Anomaly_Reason,Target,TARGET,category,,Behaviour dimension with the largest deviation (Normal if not anomalous).,Evaluation of explanation quality.,,,Normal
+Task_Completion_Time,Target,TARGET,float,min,Minutes remaining from the snapshot to task completion.,Primary TASK target. Actual_Task_Duration must NOT be an input.,2.1,848.3,131.7
+Incident_Type,Target,TARGET,category,,"Type of safety event (No_Incident if no event), sampled in proportion to the dominant risk term.",SAFETY: LEAKAGE.,,,No_Incident
+Fuel_Efficiency,Target,TARGET,float,t / L,Completed_Quantity ÷ Total_Fuel_Used (optional target).,Uses outcomes – target only.,2.61,49.3,12.94

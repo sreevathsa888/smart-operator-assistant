@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0; background: #0a0c0e; color: #e9edf0;
+  font-family: Barlow, 'Noto Sans Tamil', 'Noto Sans Devanagari', 'Noto Sans Telugu', 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+/* subtle machined-metal ground */
+.app-ground {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, #1a2027 0%, transparent 60%),
+    linear-gradient(#0a0c0e, #0a0c0e);
+}
+@layer components {
+  .panel { @apply bg-bg2 border border-line rounded-lg shadow-panel; }
+  .label { @apply text-[11px] leading-[14px] font-semibold tracking-[0.14em] uppercase text-ink3; }
+  .ptitle { @apply font-display text-[15px] leading-5 font-semibold tracking-[0.12em] uppercase text-ink; }
+  .num { font-family: 'JetBrains Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .btn { @apply inline-flex items-center justify-center gap-2 h-12 px-5 rounded-md text-sm font-semibold tracking-[0.08em] uppercase border border-ctl text-ink transition-colors hover:bg-bg3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:opacity-40; }
+  .btn-primary { @apply bg-ink text-bg0 border-ink hover:bg-white; }
+  .btn-assist { @apply border-assist text-assist hover:bg-assist/10; }
+  .btn-danger { @apply h-14 bg-critical text-onsig border-critical hover:bg-[#ff6f68]; }
+  .chip { @apply h-12 px-4 rounded-md border border-line text-sm font-semibold tracking-wider uppercase text-ink2 hover:bg-bg3 transition-colors; }
+  .chip-on { @apply border-ink text-ink bg-bg3; }
+}
+/* technical grid used behind machine plans */
+.tech-grid {
+  background-image:
+    linear-gradient(#ffffff08 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+input[type=range].slider { -webkit-appearance: none; appearance: none; width: 100%; height: 48px; background: transparent; cursor: pointer; }
+input[type=range].slider::-webkit-slider-runnable-track { height: 6px; border-radius: 4px; background: linear-gradient(90deg, var(--fill, #56c7db) var(--pct, 50%), #1d2228 var(--pct, 50%)); }
+input[type=range].slider::-moz-range-track { height: 6px; border-radius: 4px; background: #1d2228; }
+input[type=range].slider::-moz-range-progress { height: 6px; border-radius: 4px; background: var(--fill, #56c7db); }
+input[type=range].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%; background: #e9edf0; border: 3px solid var(--fill, #56c7db); box-shadow: 0 2px 8px #0008; }
+input[type=range].slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #e9edf0; border: 3px solid var(--fill, #56c7db); }
+input[type=range].slider:focus-visible { outline: 2px solid #e9edf0; outline-offset: 2px; border-radius: 6px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #2a3139; border-radius: 6px; }
+@keyframes zonepulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
+.zone-pulse { animation: zonepulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .zone-pulse { animation: none; } * { transition-duration: 0ms !important; } }
+
+/* Indic scripts: tracking breaks conjuncts, so drop letter-spacing and uppercase styling */
+html:is([lang=ta],[lang=hi],[lang=te]) body * { letter-spacing: 0 !important; }
