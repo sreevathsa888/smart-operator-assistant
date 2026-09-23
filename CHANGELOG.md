@@ -31,3 +31,34 @@ None in the UI. The uploaded app was moved unchanged to `frontend/` (verified wi
 **Known issues**
 - Scenario mix is hazard-rich by design (documented in `docs/dataset.md` §9).
 - Frontend still runs entirely on `mock.js` and the JS `computeRisk` formula (to be replaced in phases 9–16).
+
+## 2026-09-23 — Phase 4–7: EDA, safety / anomaly / task-time models
+
+**Files added**
+`ml/{__init__,common,features,inference,eda,train_safety_model,train_anomaly_model,train_task_model,evaluate_models}.py`,
+`models/{safety_model,anomaly_model,task_time_model}/` (artifact + metadata.json), `reports/` (model_report.md, metrics JSON),
+`docs/{eda,ml_methodology}.md`, `docs/figures/*.png`, `tests/test_models.py`, `scripts/train_all.sh`.
+
+**Files changed**
+`README.md`, `requirements.txt` (+joblib, matplotlib). No UI files changed.
+
+**Features**
+- Shared feature module (training = serving) with enforced leakage exclusions.
+- Safety model: 4 candidates, selected on validation log-loss; isotonic-calibrated 0–100 index; alert thresholds chosen on validation; exact group-Shapley explanations; out-of-distribution warnings.
+- Personalised anomaly detection: context-normalised behaviour, robust personal baselines, Isolation Forest on personal z-scores, cold-start fallback, typical bands for the twin.
+- Task time: remaining + total models with split-conformal 80 % ranges.
+
+**Tests performed**
+`bash scripts/train_all.sh` → 24 passed; a from-scratch re-run reproduced identical metrics for all three models.
+
+**Issues found and fixed during the phase**
+- Leftover files from an interrupted earlier attempt in the sandbox were quarantined, not reused; everything was rebuilt and re-run.
+- Risk index was confined to 15–87.5 (midpoint weighting) → isotonic calibration (MAE 6.26 → 5.50).
+- Level disagreed with its own score band in 12 % of cases → level is now the score's band with validation-chosen alert thresholds.
+- pandas refused float reference values in int-inferred columns → explicit input dtypes in inference.
+- EDA claim that trees would win was contradicted by Phase 5 → corrected in eda.md.
+
+**Known issues**
+- Safety model is weakest on STEEP_TERRAIN (accuracy 0.62) and MACHINE_OVERHEATING (0.69).
+- The UI demo event uses an excavator at 6.8 km/h (outside training range) → flagged by the model; fix in Phase 11.
+- 19 % of LOW sessions are raised to MEDIUM+ (the cost of the high-recall alert policy).

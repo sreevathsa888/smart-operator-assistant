@@ -1,0 +1,89 @@
+{
+  "model_name": "anomaly_model",
+  "version": "v1",
+  "artifact": "anomaly_model_v1.joblib",
+  "training_date": "2026-09-23T09:01:46+00:00",
+  "dataset_version": "synthetic_v1.0",
+  "dataset_sha256": "0bd1596ea91057cf1f070a2168c078aa46df684b92bc216eaaf00213ee36a458",
+  "random_seed": 42,
+  "sklearn_version": "1.8.0",
+  "python_version": "3.12.3",
+  "note": "Trained on SYNTHETIC data. Metrics do not indicate real-world performance.",
+  "task": "personalised operator behaviour anomaly detection (Operator Digital Twin)",
+  "selected_model": "personal_isolation_forest",
+  "selection_criterion": "highest PR-AUC on the evaluation period",
+  "behaviour_metrics": [
+    "idle_per_2h",
+    "speed_ratio",
+    "fuel_ratio",
+    "control_deficit",
+    "harsh_per_h",
+    "rapid_per_h",
+    "prox_viol_per_h"
+  ],
+  "context_models": {
+    "speed": [
+      "Ground_Slope",
+      "Visibility",
+      "Machine_Type",
+      "Travel_Direction",
+      "Ground_Condition"
+    ],
+    "fuel": [
+      "Engine_Load_Percentage",
+      "Idle_Share_Ctx",
+      "Machine_Model_Class",
+      "Operating_Mode"
+    ]
+  },
+  "excluded_for_leakage": [
+    "Anomaly_Reason",
+    "Anomaly_Score",
+    "Operator_Anomaly",
+    "Scenario"
+  ],
+  "split": "time-based: history < 2026-06-29 (baselines, fit, threshold) / evaluation \u2265 2026-06-29",
+  "n_history": 26591,
+  "n_eval": 13409,
+  "operators_with_baseline": 120,
+  "threshold_note": "alert threshold chosen for best F1 on the labelled HISTORY period",
+  "metrics_eval": {
+    "global_isolation_forest": {
+      "roc_auc": 0.8134701600462784,
+      "pr_auc": 0.6254391218794657,
+      "precision": 0.6078011144449207,
+      "recall": 0.5468569224836097,
+      "f1": 0.5757206658546488,
+      "threshold": 0.4720463223398232,
+      "flagged_rate": 0.17398762025505257
+    },
+    "global_threshold_rule": {
+      "roc_auc": 0.818787980612345,
+      "pr_auc": 0.6316963100890591,
+      "precision": 0.584351145038168,
+      "recall": 0.5904357886617817,
+      "f1": 0.5873777095722232,
+      "threshold": 2.846334891414851,
+      "flagged_rate": 0.1953911551942725
+    },
+    "personal_max_z_rule": {
+      "roc_auc": 0.9295887689489455,
+      "pr_auc": 0.7972885883822056,
+      "precision": 0.6887483355525965,
+      "recall": 0.7979174701118396,
+      "f1": 0.7393246381990352,
+      "threshold": 2.944152604447235,
+      "flagged_rate": 0.22402863748228802
+    },
+    "personal_isolation_forest": {
+      "roc_auc": 0.9248963698350361,
+      "pr_auc": 0.8065947851033584,
+      "precision": 0.7228322605073836,
+      "recall": 0.736212880833012,
+      "f1": 0.7294612151318304,
+      "threshold": 0.4462249566777415,
+      "flagged_rate": 0.19695726750689835
+    }
+  },
+  "reason_agreement": 0.7589664481295796
+}
